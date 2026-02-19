@@ -1,0 +1,39 @@
+{
+  "name": "bpmn-md",
+  "version": "0.1.0",
+  "description": "Text DSL for BPMN 2.0 - human-readable process definitions",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "bpmn-md": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "bpmn",
+    "dsl",
+    "workflow",
+    "process"
+  ],
+  "author": "Christian Wygoda",
+  "license": "MIT",
+  "packageManager": "pnpm@10.25.0",
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "chevrotain": "^11.1.1",
+    "fast-xml-parser": "^5.3.6",
+    "zod": "^4.3.6"
+  }
+}
