@@ -11,6 +11,9 @@ importers:
       chevrotain:
         specifier: ^11.1.1
         version: 11.1.1
+      elkjs:
+        specifier: ^0.11.0
+        version: 0.11.0
       fast-xml-parser:
         specifier: ^5.3.6
         version: 5.3.6
@@ -386,6 +389,9 @@ packages:
 
   chevrotain@11.1.1:
     resolution: {integrity: sha512-f0yv5CPKaFxfsPTBzX7vGuim4oIC1/gcS7LUGdBSwl2dU6+FON6LVUksdOo1qJjoUvXNn45urgh8C+0a24pACQ==}
+
+  elkjs@0.11.0:
+    resolution: {integrity: sha512-u4J8h9mwEDaYMqo0RYJpqNMFDoMK7f+pu4GjcV+N8jIC7TRdORgzkfSjTJemhqONFfH6fBI3wpysgWbhgVWIXw==}
 
   es-module-lexer@1.7.0:
     resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
@@ -825,6 +831,8 @@ snapshots:
       '@chevrotain/types': 11.1.1
       '@chevrotain/utils': 11.1.1
       lodash-es: 4.17.23
+
+  elkjs@0.11.0: {}
 
   es-module-lexer@1.7.0: {}
 

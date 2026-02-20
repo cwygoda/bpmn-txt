@@ -3,7 +3,6 @@ import type {
   Document,
   Process,
   Pool,
-  Lane,
   FlowNode,
   SequenceFlow,
   MessageFlow,
@@ -18,9 +17,11 @@ import type {
   DataObject,
   DataStore,
   Annotation,
-  Group,
 } from '../ast/types.js';
 import { generateIds } from './id-generator.js';
+import { generateLayout, applyLayout, type LayoutResult, type LayoutOptions } from './layout.js';
+import { ELEMENT_SIZES } from './constants.js';
+import { collectFromProcess, collectPoolsAndLanes } from './utils.js';
 
 const BPMN_NS = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
 const BPMNDI_NS = 'http://www.omg.org/spec/BPMN/20100524/DI';
@@ -29,12 +30,14 @@ const DI_NS = 'http://www.omg.org/spec/DD/20100524/DI';
 const XSI_NS = 'http://www.w3.org/2001/XMLSchema-instance';
 
 export interface BpmnExportOptions {
-  /** Include BPMNDI diagram info (placeholder bounds) */
+  /** Include BPMNDI diagram info */
   includeDiagram?: boolean;
+  /** Layout options for auto-layout */
+  layoutOptions?: LayoutOptions;
 }
 
 /**
- * Export document to BPMN 2.0 XML string
+ * Export document to BPMN 2.0 XML string (sync, no auto-layout)
  */
 export function toBpmnXml(doc: Document, options: BpmnExportOptions = {}): string {
   const { includeDiagram = true } = options;
@@ -50,13 +53,77 @@ export function toBpmnXml(doc: Document, options: BpmnExportOptions = {}): strin
     suppressEmptyNode: true,
   });
 
-  const definitions = buildDefinitions(doc, includeDiagram);
+  // Collect existing layout from document
+  const layout = collectExistingLayout(doc);
+  const definitions = buildDefinitions(doc, includeDiagram, layout);
   const xml = builder.build({ '?xml': { '@_version': '1.0', '@_encoding': 'UTF-8' }, ...definitions });
 
   return xml;
 }
 
-function buildDefinitions(doc: Document, includeDiagram: boolean): Record<string, unknown> {
+/**
+ * Export document to BPMN 2.0 XML string with auto-layout (async)
+ */
+export async function toBpmnXmlAsync(doc: Document, options: BpmnExportOptions = {}): Promise<string> {
+  const { includeDiagram = true, layoutOptions = {} } = options;
+
+  // Generate IDs for elements without them
+  generateIds(doc);
+
+  // Generate layout
+  const layout = await generateLayout(doc, layoutOptions);
+
+  // Apply layout to document (for downstream consumers)
+  applyLayout(doc, layout);
+
+  const builder = new XMLBuilder({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    format: true,
+    indentBy: '  ',
+    suppressEmptyNode: true,
+  });
+
+  const definitions = buildDefinitions(doc, includeDiagram, layout);
+  const xml = builder.build({ '?xml': { '@_version': '1.0', '@_encoding': 'UTF-8' }, ...definitions });
+
+  return xml;
+}
+
+/**
+ * Collect layout information already present in document
+ */
+function collectExistingLayout(doc: Document): LayoutResult {
+  const elements = new Map<string, { x: number; y: number; width?: number; height?: number }>();
+  const edges = new Map<string, { waypoints: { x: number; y: number }[] }>();
+
+  for (const proc of doc.processes) {
+    const { elements: procElements, flows } = collectFromProcess(proc);
+
+    // Extract element layouts
+    for (const elem of procElements) {
+      if (elem.id && elem.layout?.x !== undefined && elem.layout?.y !== undefined) {
+        elements.set(elem.id, {
+          x: elem.layout.x,
+          y: elem.layout.y,
+          width: elem.layout.width,
+          height: elem.layout.height,
+        });
+      }
+    }
+
+    // Extract flow layouts
+    for (const flow of flows) {
+      if (flow.id && flow.layout?.waypoints && flow.layout.waypoints.length > 0) {
+        edges.set(flow.id, { waypoints: flow.layout.waypoints });
+      }
+    }
+  }
+
+  return { elements, edges };
+}
+
+function buildDefinitions(doc: Document, includeDiagram: boolean, layout: LayoutResult): Record<string, unknown> {
   const hasCollaboration = doc.processes.some((p) => p.pools && p.pools.length > 0);
 
   const definitions: Record<string, unknown> = {
@@ -92,7 +159,7 @@ function buildDefinitions(doc: Document, includeDiagram: boolean): Record<string
 
   // Build diagram if requested
   if (includeDiagram) {
-    content['bpmndi:BPMNDiagram'] = buildDiagram(doc);
+    content['bpmndi:BPMNDiagram'] = buildDiagram(doc, layout);
   }
 
   return definitions;
@@ -609,16 +676,143 @@ function buildAnnotation(annotation: Annotation): Record<string, unknown> {
   return result;
 }
 
-function buildDiagram(doc: Document): Record<string, unknown> {
-  const diagram: Record<string, unknown> = {
-    '@_id': 'BPMNDiagram_1',
-    'bpmndi:BPMNPlane': {
-      '@_id': 'BPMNPlane_1',
-      '@_bpmnElement': doc.processes[0]?.id || 'Process_1',
-      // Shapes and edges would be added here with actual layout
-      // For now, just create a placeholder
-    },
+function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unknown> {
+  const hasCollaboration = doc.processes.some((p) => p.pools && p.pools.length > 0);
+  const bpmnElement = hasCollaboration ? 'Collaboration_1' : doc.processes[0]?.id || 'Process_1';
+
+  const plane: Record<string, unknown> = {
+    '@_id': 'BPMNPlane_1',
+    '@_bpmnElement': bpmnElement,
   };
 
-  return diagram;
+  const shapes: unknown[] = [];
+  const edges: unknown[] = [];
+
+  // Collect all elements and flows from all processes
+  for (const proc of doc.processes) {
+    // Add participant shapes for pools and lane shapes
+    const { pools, lanes } = collectPoolsAndLanes(proc);
+    for (const pool of pools) {
+      const participantId = `Participant_${pool.id}`;
+      const poolLayout = layout.elements.get(participantId);
+      shapes.push(buildShape(participantId, poolLayout ?? pool.layout, 'pool'));
+    }
+    for (const lane of lanes) {
+      if (!lane.id) continue;
+      const laneLayout = layout.elements.get(lane.id);
+      shapes.push(buildShape(lane.id, laneLayout ?? lane.layout, 'lane'));
+    }
+
+    // Add shapes for all flow elements
+    const { elements: allElements, flows: allFlows } = collectFromProcess(proc);
+    for (const elem of allElements) {
+      if (!elem.id) continue;
+
+      const elemLayout = layout.elements.get(elem.id);
+      if (elemLayout) {
+        shapes.push(buildShape(elem.id, elemLayout, elem.type));
+      } else {
+        // Use default sizes if no layout
+        shapes.push(buildShape(elem.id, elem.layout, elem.type));
+      }
+
+      // Handle boundary events
+      if ((elem.type === 'task' || elem.type === 'subprocess') && elem.boundaryEvents) {
+        for (const boundary of elem.boundaryEvents) {
+          if (!boundary.id) continue;
+          const boundaryLayout = layout.elements.get(boundary.id);
+          shapes.push(buildShape(boundary.id, boundaryLayout, 'boundaryEvent'));
+        }
+      }
+    }
+
+    // Add edges for sequence flows
+    for (const flow of allFlows) {
+      if (!flow.id) continue;
+
+      const flowLayout = layout.edges.get(flow.id);
+      if (flowLayout) {
+        edges.push(buildEdge(flow.id, flowLayout.waypoints));
+      } else if (flow.layout?.waypoints) {
+        edges.push(buildEdge(flow.id, flow.layout.waypoints));
+      } else {
+        // Edge without waypoints - minimal placeholder
+        edges.push({
+          '@_id': `${flow.id}_di`,
+          '@_bpmnElement': flow.id,
+        });
+      }
+    }
+
+    // Add edges for message flows
+    if (proc.messageFlows) {
+      for (const flow of proc.messageFlows) {
+        if (!flow.id) continue;
+        const flowLayout = layout.edges.get(flow.id);
+        if (flowLayout) {
+          edges.push(buildEdge(flow.id, flowLayout.waypoints));
+        } else {
+          edges.push({
+            '@_id': `${flow.id}_di`,
+            '@_bpmnElement': flow.id,
+          });
+        }
+      }
+    }
+  }
+
+  if (shapes.length > 0) {
+    plane['bpmndi:BPMNShape'] = shapes;
+  }
+  if (edges.length > 0) {
+    plane['bpmndi:BPMNEdge'] = edges;
+  }
+
+  return {
+    '@_id': 'BPMNDiagram_1',
+    'bpmndi:BPMNPlane': plane,
+  };
 }
+
+function buildShape(
+  elementId: string,
+  layout: { x?: number; y?: number; width?: number; height?: number } | undefined,
+  elementType: string
+): Record<string, unknown> {
+  const defaultSize = ELEMENT_SIZES[elementType] || { width: 100, height: 80 };
+
+  const shape: Record<string, unknown> = {
+    '@_id': `${elementId}_di`,
+    '@_bpmnElement': elementId,
+  };
+
+  // Add bounds
+  shape['dc:Bounds'] = {
+    '@_x': layout?.x ?? 0,
+    '@_y': layout?.y ?? 0,
+    '@_width': layout?.width ?? defaultSize.width,
+    '@_height': layout?.height ?? defaultSize.height,
+  };
+
+  return shape;
+}
+
+function buildEdge(
+  flowId: string,
+  waypoints: { x: number; y: number }[]
+): Record<string, unknown> {
+  const edge: Record<string, unknown> = {
+    '@_id': `${flowId}_di`,
+    '@_bpmnElement': flowId,
+  };
+
+  if (waypoints.length > 0) {
+    edge['di:waypoint'] = waypoints.map((wp) => ({
+      '@_x': wp.x,
+      '@_y': wp.y,
+    }));
+  }
+
+  return edge;
+}
+

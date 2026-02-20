@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../src/parser/index.js';
-import { generateIds, toJson, toObject, toBpmnXml } from '../src/generators/index.js';
+import { generateIds, toJson, toObject, toBpmnXml, toBpmnXmlAsync, generateLayout } from '../src/generators/index.js';
 
 describe('ID Generator', () => {
   it('preserves existing IDs', () => {
@@ -280,5 +280,209 @@ describe('BPMN XML Exporter', () => {
     expect(xml).toContain('xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"');
     expect(xml).toContain('xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"');
     expect(xml).toContain('xmlns:di="http://www.omg.org/spec/DD/20100524/DI"');
+  });
+
+  it('generates BPMNShape elements for flow nodes', () => {
+    const input = `process: test
+  start: s1
+    name: "Start"
+  task: t1
+    name: "Task"
+  end: e1
+    name: "End"
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+
+    expect(xml).toContain('bpmndi:BPMNShape');
+    expect(xml).toContain('bpmnElement="s1"');
+    expect(xml).toContain('bpmnElement="t1"');
+    expect(xml).toContain('bpmnElement="e1"');
+    expect(xml).toContain('dc:Bounds');
+  });
+
+  it('generates BPMNEdge elements for sequence flows', () => {
+    const input = `process: test
+  start: s1
+    name: "Start"
+  task: t1
+    name: "Task"
+  flow: f1
+    from: s1
+    to: t1
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+
+    expect(xml).toContain('bpmndi:BPMNEdge');
+    expect(xml).toContain('bpmnElement="f1"');
+  });
+});
+
+describe('Layout Generator', () => {
+  it('handles empty process', async () => {
+    const input = `process: test
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    expect(layout.elements.size).toBe(0);
+    expect(layout.edges.size).toBe(0);
+  });
+
+  it('handles process with only pools (no elements)', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Empty Pool"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    // No flow elements, so no element layouts
+    expect(layout.elements.size).toBe(0);
+  });
+
+  it('generates layout for simple process', async () => {
+    const input = `process: test
+  start: s1
+    name: "Start"
+  task: t1
+    name: "Task"
+  end: e1
+    name: "End"
+  flow: f1
+    from: s1
+    to: t1
+  flow: f2
+    from: t1
+    to: e1
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    // Should have layouts for all elements
+    expect(layout.elements.size).toBe(3);
+    expect(layout.elements.has('s1')).toBe(true);
+    expect(layout.elements.has('t1')).toBe(true);
+    expect(layout.elements.has('e1')).toBe(true);
+
+    // Each should have x, y coordinates
+    const s1Layout = layout.elements.get('s1')!;
+    expect(s1Layout.x).toBeDefined();
+    expect(s1Layout.y).toBeDefined();
+    expect(s1Layout.width).toBeDefined();
+    expect(s1Layout.height).toBeDefined();
+
+    // Should have edge waypoints
+    expect(layout.edges.size).toBe(2);
+    expect(layout.edges.has('f1')).toBe(true);
+    expect(layout.edges.has('f2')).toBe(true);
+  });
+
+  it('applies layout direction option', async () => {
+    const input = `process: test
+  start: s1
+  task: t1
+  end: e1
+  flow: f1
+    from: s1
+    to: t1
+  flow: f2
+    from: t1
+    to: e1
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+
+    // Horizontal (RIGHT) layout
+    const rightLayout = await generateLayout(document!, { direction: 'RIGHT' });
+    const s1Right = rightLayout.elements.get('s1')!;
+    const t1Right = rightLayout.elements.get('t1')!;
+
+    // In RIGHT direction, t1 should be to the right of s1
+    expect(t1Right.x!).toBeGreaterThan(s1Right.x!);
+  });
+
+  it('computes pool bounds from contained elements', async () => {
+    const input = `process: test
+  pool: p1
+    name: "My Pool"
+    lane: l1
+      name: "Lane 1"
+      task: t1
+        name: "Task 1"
+      task: t2
+        name: "Task 2"
+      flow: f1
+        from: t1
+        to: t2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    // Should have computed bounds for the pool participant
+    const poolLayout = layout.elements.get('Participant_p1');
+    expect(poolLayout).toBeDefined();
+    expect(poolLayout!.x).toBeDefined();
+    expect(poolLayout!.y).toBeDefined();
+    expect(poolLayout!.width).toBeGreaterThan(0);
+    expect(poolLayout!.height).toBeGreaterThan(0);
+
+    // Should have computed bounds for the lane
+    const laneLayout = layout.elements.get('l1');
+    expect(laneLayout).toBeDefined();
+  });
+});
+
+describe('Async BPMN XML Export with Layout', () => {
+  it('generates XML with auto-layout', async () => {
+    const input = `process: test
+  start: s1
+    name: "Start"
+  task: t1
+    name: "Task"
+  end: e1
+    name: "End"
+  flow: f1
+    from: s1
+    to: t1
+  flow: f2
+    from: t1
+    to: e1
+`;
+    const { document } = parse(input);
+    const xml = await toBpmnXmlAsync(document!);
+
+    // Should contain proper BPMN structure
+    expect(xml).toContain('bpmn:definitions');
+    expect(xml).toContain('bpmn:process');
+
+    // Should have shapes with actual bounds (not 0,0)
+    expect(xml).toContain('bpmndi:BPMNShape');
+    expect(xml).toContain('dc:Bounds');
+
+    // Should have edges with waypoints
+    expect(xml).toContain('bpmndi:BPMNEdge');
+    expect(xml).toContain('di:waypoint');
+  });
+
+  it('respects layout options', async () => {
+    const input = `process: test
+  start: s1
+  task: t1
+  flow: f1
+    from: s1
+    to: t1
+`;
+    const { document } = parse(input);
+    const xml = await toBpmnXmlAsync(document!, {
+      layoutOptions: { direction: 'DOWN', nodeSpacing: 100 }
+    });
+
+    expect(xml).toContain('bpmndi:BPMNShape');
   });
 });
