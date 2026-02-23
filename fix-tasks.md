@@ -436,7 +436,7 @@ const results = await linter.lint(moddleRoot);
 | B | ~~B1. Gateway type default~~ | ✅ Done | Trivial |
 | B | ~~B2. Unresolved ref locations~~ | ✅ Done | Small |
 | C | ~~C1. Invalid fixtures~~ | ✅ Done | Small |
-| C | C2. XSD validation | Low | Medium |
+| C | ~~C2. XSD validation~~ | ✅ Done | Medium |
 | D | D1. EBNF grammar docs | Low | Small |
 | E | E1. bpmnlint integration | Low | Medium |
 

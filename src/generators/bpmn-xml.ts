@@ -51,6 +51,7 @@ export function toBpmnXml(doc: Document, options: BpmnExportOptions = {}): strin
     format: true,
     indentBy: '  ',
     suppressEmptyNode: true,
+    suppressBooleanAttributes: false,
   });
 
   // Collect existing layout from document
@@ -82,6 +83,7 @@ export async function toBpmnXmlAsync(doc: Document, options: BpmnExportOptions =
     format: true,
     indentBy: '  ',
     suppressEmptyNode: true,
+    suppressBooleanAttributes: false,
   });
 
   const definitions = buildDefinitions(doc, includeDiagram, layout);
@@ -204,7 +206,7 @@ function buildCollaboration(doc: Document): Record<string, unknown> {
 function buildProcess(proc: Process): Record<string, unknown> {
   const process: Record<string, unknown> = {
     '@_id': proc.id,
-    '@_isExecutable': proc.executable ?? true,
+    '@_isExecutable': String(proc.executable ?? true),
   };
 
   if (proc.name) {
@@ -502,7 +504,7 @@ function buildBoundaryEvent(event: BoundaryEvent, attachedToRef: string): Record
   const result: Record<string, unknown> = {
     '@_id': event.id,
     '@_attachedToRef': attachedToRef,
-    '@_cancelActivity': event.interrupting ?? true,
+    '@_cancelActivity': String(event.interrupting ?? true),
   };
   if (event.name) result['@_name'] = event.name;
 
@@ -578,7 +580,7 @@ function buildTask(task: Task): { tag: string; element: Record<string, unknown> 
 function buildSubprocess(subprocess: Subprocess): Record<string, unknown> {
   const result: Record<string, unknown> = {
     '@_id': subprocess.id,
-    '@_triggeredByEvent': subprocess.triggered ?? false,
+    '@_triggeredByEvent': String(subprocess.triggered ?? false),
   };
   if (subprocess.name) result['@_name'] = subprocess.name;
 
