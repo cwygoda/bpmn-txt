@@ -152,6 +152,17 @@ describe('BPMN XML Exporter', () => {
     expect(xml).toContain('bpmn:inclusiveGateway');
   });
 
+  it('defaults undefined gateway type to exclusive', () => {
+    const { document } = parse('process: test\n  gateway: g1\n');
+    // Manually clear gatewayType to simulate edge case
+    const gateway = document!.processes[0].elements![0] as { gatewayType?: string };
+    gateway.gatewayType = undefined as unknown as string;
+
+    const xml = toBpmnXml(document!);
+    expect(xml).toContain('bpmn:exclusiveGateway');
+    expect(xml).toContain('id="g1"');
+  });
+
   it('exports event triggers correctly', () => {
     const input = `process: test
   start: s1

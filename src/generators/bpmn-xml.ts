@@ -614,7 +614,7 @@ function buildGateway(gateway: Gateway): { tag: string; element: Record<string, 
     complex: 'bpmn:complexGateway',
   };
 
-  const tag = tagMap[gateway.gatewayType];
+  const tag = tagMap[gateway.gatewayType] ?? 'bpmn:exclusiveGateway';
   const result: Record<string, unknown> = {
     '@_id': gateway.id,
   };
