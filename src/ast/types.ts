@@ -177,6 +177,8 @@ export const TaskSchema = BaseNodeSchema.extend({
   candidateGroups: z.string().optional(),
   candidateUsers: z.string().optional(),
   boundaryEvents: z.array(z.lazy(() => BoundaryEventSchema)).optional(),
+  dataInputAssociations: z.array(z.lazy(() => DataAssociationSchema)).optional(),
+  dataOutputAssociations: z.array(z.lazy(() => DataAssociationSchema)).optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;

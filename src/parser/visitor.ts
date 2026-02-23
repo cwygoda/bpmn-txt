@@ -351,6 +351,32 @@ export class BpmnMdVisitor extends BaseCstVisitor {
       task.boundaryEvents = (ctx.boundaryEvent as CstNode[]).map((n) => this.visit(n));
     }
 
+    // Capture data associations
+    if (ctx.dataAssociation) {
+      const inputAssocs: DataAssociation[] = [];
+      const outputAssocs: DataAssociation[] = [];
+
+      for (const assocNode of ctx.dataAssociation as CstNode[]) {
+        const assoc = this.visit(assocNode) as DataAssociation;
+        if (assoc.direction === 'input') {
+          // <- dataId means: data flows INTO task
+          inputAssocs.push({
+            ...assoc,
+            target: task.id!,
+          });
+        } else {
+          // => dataId means: data flows OUT OF task
+          outputAssocs.push({
+            ...assoc,
+            source: task.id!,
+          });
+        }
+      }
+
+      if (inputAssocs.length > 0) task.dataInputAssociations = inputAssocs;
+      if (outputAssocs.length > 0) task.dataOutputAssociations = outputAssocs;
+    }
+
     // Capture inline flows
     this.captureInlineFlows(task.id!, ctx);
 

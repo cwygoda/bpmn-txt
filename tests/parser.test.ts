@@ -408,4 +408,55 @@ describe('Parser', () => {
     expect(flows.some(f => f.id === 'explicit-flow')).toBe(true);
     expect(flows.some(f => f.from === 'begin' && f.to === 'task-a')).toBe(true);
   });
+
+  // Data association tests
+  it('resolves input data association', () => {
+    const input = `process: test
+  data-object: invoice
+  task: process-invoice
+    <- invoice
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const task = document!.processes[0].elements![1] as { dataInputAssociations?: Array<{ source: string; target: string; direction: string }> };
+    expect(task.dataInputAssociations).toHaveLength(1);
+    expect(task.dataInputAssociations![0].source).toBe('invoice');
+    expect(task.dataInputAssociations![0].target).toBe('process-invoice');
+    expect(task.dataInputAssociations![0].direction).toBe('input');
+  });
+
+  it('resolves output data association', () => {
+    const input = `process: test
+  data-object: report
+  task: generate-report
+    => report
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const task = document!.processes[0].elements![1] as { dataOutputAssociations?: Array<{ source: string; target: string; direction: string }> };
+    expect(task.dataOutputAssociations).toHaveLength(1);
+    expect(task.dataOutputAssociations![0].source).toBe('generate-report');
+    expect(task.dataOutputAssociations![0].target).toBe('report');
+    expect(task.dataOutputAssociations![0].direction).toBe('output');
+  });
+
+  it('resolves multiple data associations on one task', () => {
+    const input = `process: test
+  data-object: input-data
+  data-object: output-data
+  task: transform
+    <- input-data
+    => output-data
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const task = document!.processes[0].elements![2] as {
+      dataInputAssociations?: Array<{ source: string }>;
+      dataOutputAssociations?: Array<{ target: string }>;
+    };
+    expect(task.dataInputAssociations).toHaveLength(1);
+    expect(task.dataInputAssociations![0].source).toBe('input-data');
+    expect(task.dataOutputAssociations).toHaveLength(1);
+    expect(task.dataOutputAssociations![0].target).toBe('output-data');
+  });
 });
