@@ -39,7 +39,7 @@
       { EditorView, basicSetup },
       { EditorState },
       { yaml },
-      { parse, validate, toBpmnXmlAsync },
+      bpmnTxt,
       BpmnJS
     ] = await Promise.all([
       import('codemirror'),
@@ -48,6 +48,11 @@
       import('bpmn-txt'),
       import('bpmn-js').then(m => m.default)
     ]);
+
+    const { parse, validate, toBpmnXmlAsync } = bpmnTxt;
+
+    // Expose for testing
+    (window as any).__bpmnTxt = { parse, validate };
 
     // Initialize CodeMirror
     const startState = EditorState.create({

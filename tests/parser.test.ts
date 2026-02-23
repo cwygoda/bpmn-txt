@@ -307,4 +307,32 @@ describe('Parser', () => {
     const { document, errors } = parse(input);
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  it('rejects flow declaration nested inside task', () => {
+    const input = `process: test
+  task: greet
+    name: "Say Hello"
+
+    flow: f1
+    from: begin
+    to: greet
+`;
+    const { errors } = parse(input);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].line).toBe(5);
+  });
+
+  it('rejects flow declaration nested inside end event', () => {
+    const input = `process: test
+  end: finish
+    name: "End"
+
+    flow: f1
+    from: begin
+    to: finish
+`;
+    const { errors } = parse(input);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].line).toBe(5);
+  });
 });

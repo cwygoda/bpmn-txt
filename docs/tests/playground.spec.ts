@@ -60,6 +60,34 @@ test.describe('Playground', () => {
     await expect(page.locator('.errors-panel')).toBeVisible();
   });
 
+  test('rejects flow nested inside element (indentation bug regression)', async ({ page }) => {
+    // Wait for bpmn-txt to load
+    await expect(page.locator('.status.success')).toBeVisible({ timeout: 10000 });
+
+    // flow: f1 is incorrectly indented under end: (4 spaces instead of 2)
+    const testCode = `process: test
+  start: s1
+  end: finish
+    name: "End"
+
+    flow: f1
+    from: s1
+    to: finish
+`;
+
+    // Test parse directly - this code should produce an error
+    const result = await page.evaluate((code) => {
+      const { parse } = (window as any).__bpmnTxt;
+      const r = parse(code);
+      return { errors: r.errors, hasDoc: !!r.document };
+    }, testCode);
+
+    // Should have parse error about unexpected flow:
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0].message).toContain('flow:');
+    expect(result.errors[0].line).toBe(6);
+  });
+
   test('copy button is enabled after successful compile', async ({ page }) => {
     await expect(page.locator('.status.success')).toBeVisible({ timeout: 10000 });
 

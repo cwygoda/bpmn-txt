@@ -11,7 +11,8 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['bpmn-txt', 'bpmn-js', 'codemirror', '@codemirror/lang-yaml']
+    include: ['bpmn-js', 'codemirror', '@codemirror/lang-yaml'],
+    exclude: ['bpmn-txt']  // Don't pre-bundle - use linked source directly
   },
   ssr: {
     noExternal: ['bpmn-txt']

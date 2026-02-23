@@ -40,7 +40,7 @@ export class BpmnMdParser extends CstParser {
     if (!token) return false;
     if (token.tokenType === T.Newline) return true;
     const indented = token as IndentedToken;
-    return indented.indent >= this.currentIndent;
+    return indented.indent === this.currentIndent;
   }
 
   // === Entry point ===
