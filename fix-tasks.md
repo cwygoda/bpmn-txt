@@ -438,6 +438,6 @@ const results = await linter.lint(moddleRoot);
 | C | ~~C1. Invalid fixtures~~ | ✅ Done | Small |
 | C | ~~C2. XSD validation~~ | ✅ Done | Medium |
 | D | ~~D1. EBNF grammar docs~~ | ✅ Done | Small |
-| E | E1. bpmnlint integration | Low | Medium |
+| E | ~~E1. bpmnlint integration~~ | ✅ Done | Medium |
 
-**Recommended order**: B1 → A1 → B2 → A2 → A3 → C1 → C2 → D1 → E1
+**All tasks completed!**

@@ -18,6 +18,7 @@ interface CompileOptions {
   layout?: boolean;
   direction?: 'RIGHT' | 'LEFT' | 'DOWN' | 'UP';
   quiet?: boolean;
+  lint?: boolean;
 }
 
 interface WatchOptions extends CompileOptions {
@@ -41,7 +42,7 @@ function getOutputPath(input: string, format: 'bpmn' | 'json', output?: string):
 }
 
 async function compile(inputPath: string, options: CompileOptions): Promise<boolean> {
-  const { format = 'bpmn', layout = true, direction = 'RIGHT', quiet = false } = options;
+  const { format = 'bpmn', layout = true, direction = 'RIGHT', quiet = false, lint: runLint = false } = options;
 
   const absInput = resolve(inputPath);
 
@@ -114,6 +115,35 @@ async function compile(inputPath: string, options: CompileOptions): Promise<bool
     console.log(pc.green('✓') + ` ${pc.dim(inputPath)} → ${pc.cyan(basename(outputPath))}`);
   }
 
+  // Run bpmnlint if requested (only for BPMN format)
+  if (runLint && format === 'bpmn') {
+    try {
+      const { lint } = await import('./lint/index.js');
+      const lintResults = await lint(output);
+
+      if (lintResults.length > 0) {
+        if (!quiet) {
+          console.log(pc.cyan('\nbpmnlint results:'));
+        }
+
+        let hasErrors = false;
+        for (const result of lintResults) {
+          const prefix = result.category === 'error' ? pc.red('error:') : pc.yellow('warn:');
+          console.log(`  ${prefix} [${pc.dim(result.rule)}] ${result.id}: ${result.message}`);
+          if (result.category === 'error') hasErrors = true;
+        }
+
+        if (hasErrors) {
+          return false;
+        }
+      }
+    } catch (err) {
+      if (!quiet) {
+        console.warn(pc.yellow('Warning: bpmnlint check failed:'), (err as Error).message);
+      }
+    }
+  }
+
   return true;
 }
 
@@ -125,6 +155,7 @@ cli
   .option('--no-layout', 'Disable automatic layout generation')
   .option('-d, --direction <dir>', 'Layout direction: RIGHT, LEFT, DOWN, UP', { default: 'RIGHT' })
   .option('-q, --quiet', 'Suppress output except errors')
+  .option('--lint', 'Run bpmnlint on generated BPMN output')
   .action(async (input: string, options: CompileOptions) => {
     const success = await compile(input, options);
     process.exit(success ? 0 : 1);
