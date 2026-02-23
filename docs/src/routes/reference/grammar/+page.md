@@ -29,7 +29,7 @@ BPMN-TXT uses an indentation-based syntax similar to YAML. This page documents t
 
 ### Document Structure
 
-```ebnf
+```text
 document        = { NEWLINE } { processDecl { NEWLINE } } [ globalLayout ] ;
 
 processDecl     = "process:" IDENTIFIER NEWLINE INDENT processBody DEDENT ;
@@ -40,7 +40,7 @@ processAttr     = nameAttr | executableAttr | documentationAttr ;
 
 ### Pools and Lanes
 
-```ebnf
+```text
 poolDecl        = "pool:" IDENTIFIER NEWLINE INDENT poolBody DEDENT ;
 poolBody        = { nameAttr | laneDecl | flowElement | flowDecl } ;
 
@@ -50,7 +50,7 @@ laneBody        = { nameAttr | flowElement | flowDecl } ;
 
 ### Flow Elements
 
-```ebnf
+```text
 flowElement     = startEvent | intermediateEvent | endEvent
                 | taskDecl | subprocessDecl | callActivity
                 | gatewayDecl | dataObjectDecl | dataStoreDecl ;
@@ -58,7 +58,7 @@ flowElement     = startEvent | intermediateEvent | endEvent
 
 ### Events
 
-```ebnf
+```text
 startEvent      = "start:" IDENTIFIER NEWLINE INDENT startBody DEDENT ;
 startBody       = { nameAttr | triggerAttr | eventAttr | inlineFlow } ;
 
@@ -77,7 +77,7 @@ eventAttr       = messageAttr | timerAttr | durationAttr | signalAttr
 
 ### Tasks
 
-```ebnf
+```text
 taskDecl        = "task:" IDENTIFIER NEWLINE INDENT taskBody DEDENT ;
 taskBody        = { nameAttr | typeAttr | taskAttr | boundaryEvent | inlineFlow | dataAssoc } ;
 
@@ -88,7 +88,7 @@ taskAttr        = documentationAttr | implementationAttr | classAttr
 
 ### Subprocesses and Call Activities
 
-```ebnf
+```text
 subprocessDecl  = "subprocess:" IDENTIFIER NEWLINE INDENT subprocessBody DEDENT ;
 subprocessBody  = { nameAttr | triggeredAttr | flowElement | flowDecl | boundaryEvent } ;
 
@@ -98,14 +98,14 @@ callBody        = { nameAttr | calledElementAttr | boundaryEvent | inlineFlow } 
 
 ### Gateways
 
-```ebnf
+```text
 gatewayDecl     = "gateway:" IDENTIFIER NEWLINE INDENT gatewayBody DEDENT ;
 gatewayBody     = { nameAttr | typeAttr | defaultAttr | inlineFlow } ;
 ```
 
 ### Data Elements
 
-```ebnf
+```text
 dataObjectDecl  = "data-object:" IDENTIFIER NEWLINE INDENT dataObjectBody DEDENT ;
 dataObjectBody  = { nameAttr } ;
 
@@ -115,7 +115,7 @@ dataStoreBody   = { nameAttr } ;
 
 ### Flows
 
-```ebnf
+```text
 flowDecl        = sequenceFlowDecl | messageFlowDecl ;
 
 sequenceFlowDecl = "flow:" IDENTIFIER NEWLINE INDENT flowBody DEDENT ;
@@ -131,7 +131,7 @@ inlineAttr      = ( "condition:" | "name:" | IDENTIFIER ":" ) attrValue ;
 
 ### Data Associations
 
-```ebnf
+```text
 dataAssoc       = inputAssoc | outputAssoc ;
 inputAssoc      = "<-" IDENTIFIER NEWLINE ;
 outputAssoc     = "=>" IDENTIFIER NEWLINE ;
@@ -139,7 +139,7 @@ outputAssoc     = "=>" IDENTIFIER NEWLINE ;
 
 ### Artifacts
 
-```ebnf
+```text
 artifact        = annotationDecl | groupDecl ;
 
 annotationDecl  = "annotation:" IDENTIFIER NEWLINE INDENT annotationBody DEDENT ;
@@ -151,7 +151,7 @@ groupBody       = { nameAttr | elementsAttr } ;
 
 ### Layout (Optional)
 
-```ebnf
+```text
 globalLayout    = "@layout:" NEWLINE INDENT layoutBody DEDENT ;
 layoutBody      = { elementLayout | edgeLayout } ;
 
@@ -167,7 +167,7 @@ waypointEntry   = "-" NEWLINE INDENT { xAttr | yAttr } DEDENT ;
 
 ### Attributes
 
-```ebnf
+```text
 nameAttr        = "name:" stringValue NEWLINE ;
 typeAttr        = "type:" IDENTIFIER NEWLINE ;
 triggerAttr     = "trigger:" IDENTIFIER NEWLINE ;
@@ -205,7 +205,7 @@ heightAttr      = "height:" NUMBER NEWLINE ;
 
 ### Values
 
-```ebnf
+```text
 attrValue       = stringValue | boolValue | NUMBER | IDENTIFIER ;
 stringValue     = QUOTED_STRING | IDENTIFIER ;
 boolValue       = "true" | "false" ;
@@ -215,7 +215,7 @@ multilineString = "|" NEWLINE { INDENT LINE NEWLINE } ;
 
 ### Terminals
 
-```ebnf
+```text
 IDENTIFIER      = /[a-zA-Z_$][a-zA-Z0-9_$.-]*/ ;
 QUOTED_STRING   = /"(?:[^"\\]|\\.)*"/ ;
 NUMBER          = /-?\d+(\.\d+)?/ ;
@@ -257,7 +257,7 @@ Boundary events: `message`, `timer`, `signal`, `conditional`, `error`, `escalati
 
 ## Example
 
-```bpmn-txt
+```yaml
 process: order-fulfillment
   name: "Order Fulfillment Process"
   executable: true

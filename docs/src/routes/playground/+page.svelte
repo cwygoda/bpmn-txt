@@ -10,6 +10,7 @@
   let errors = $state<Array<{ line?: number; column?: number; message: string; type: 'error' | 'warning' }>>([]);
   let isCompiling = $state(false);
   let xmlOutput = $state('');
+  let isDarkMode = $state(false);
 
   const defaultCode = `process: hello-world
   name: "Hello World"
@@ -34,17 +35,26 @@
 `;
 
   onMount(async () => {
+    // Detect dark mode
+    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    isDarkMode = darkModeQuery.matches;
+    darkModeQuery.addEventListener('change', (e) => {
+      isDarkMode = e.matches;
+    });
+
     // Dynamically import browser-only modules
     const [
       { EditorView, basicSetup },
       { EditorState },
       { yaml },
+      { oneDark },
       bpmnTxt,
       BpmnJS
     ] = await Promise.all([
       import('codemirror'),
       import('@codemirror/state'),
       import('@codemirror/lang-yaml'),
+      import('@codemirror/theme-one-dark'),
       import('bpmn-txt'),
       import('bpmn-js').then(m => m.default)
     ]);
@@ -54,23 +64,29 @@
     // Expose for testing
     (window as any).__bpmnTxt = { parse, validate };
 
+    // Build extensions based on theme
+    const baseExtensions = [
+      basicSetup,
+      yaml(),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          compileDebounced();
+        }
+      }),
+      EditorView.theme({
+        '&': { height: '100%' },
+        '.cm-scroller': { overflow: 'auto' },
+        '.cm-content': { fontFamily: 'var(--font-mono)', fontSize: '14px' }
+      })
+    ];
+
+    // Add dark theme if in dark mode
+    const extensions = isDarkMode ? [...baseExtensions, oneDark] : baseExtensions;
+
     // Initialize CodeMirror
     const startState = EditorState.create({
       doc: defaultCode,
-      extensions: [
-        basicSetup,
-        yaml(),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            compileDebounced();
-          }
-        }),
-        EditorView.theme({
-          '&': { height: '100%' },
-          '.cm-scroller': { overflow: 'auto' },
-          '.cm-content': { fontFamily: 'var(--font-mono)', fontSize: '14px' }
-        })
-      ]
+      extensions
     });
 
     editorView = new EditorView({
@@ -199,7 +215,7 @@
 
     <div class="viewer-panel">
       <div class="panel-header">Diagram Preview</div>
-      <div class="viewer" bind:this={viewerContainer}></div>
+      <div class="viewer" class:dark={isDarkMode} bind:this={viewerContainer}></div>
     </div>
   </div>
 
@@ -332,6 +348,13 @@
   .editor {
     flex: 1;
     overflow: hidden;
+    background: #fff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .editor {
+      background: #282c34;
+    }
   }
 
   .editor :global(.cm-editor) {
@@ -341,6 +364,50 @@
   .viewer {
     flex: 1;
     background: white;
+  }
+
+  /* bpmn-js dark mode styles */
+  .viewer.dark {
+    background: #1e1e1e;
+  }
+
+  /* Invert BPMN diagram colors for dark mode */
+  .viewer.dark :global(.djs-container) {
+    background: #1e1e1e;
+  }
+
+  .viewer.dark :global(.djs-shape .djs-visual > rect),
+  .viewer.dark :global(.djs-shape .djs-visual > circle),
+  .viewer.dark :global(.djs-shape .djs-visual > polygon),
+  .viewer.dark :global(.djs-shape .djs-visual > path) {
+    fill: #2d2d2d !important;
+    stroke: #888 !important;
+  }
+
+  .viewer.dark :global(.djs-connection .djs-visual > path) {
+    stroke: #888 !important;
+  }
+
+  .viewer.dark :global(.djs-connection .djs-visual > polyline) {
+    stroke: #888 !important;
+    fill: #888 !important;
+  }
+
+  .viewer.dark :global(.djs-label),
+  .viewer.dark :global(text),
+  .viewer.dark :global(.djs-shape text) {
+    fill: #e0e0e0 !important;
+  }
+
+  /* Event fill colors in dark mode */
+  .viewer.dark :global(.djs-shape[data-element-id^="start"] .djs-visual > circle),
+  .viewer.dark :global(.djs-shape[data-element-id^="end"] .djs-visual > circle) {
+    fill: #1e1e1e !important;
+  }
+
+  /* Gateway diamond fill */
+  .viewer.dark :global(.djs-shape .djs-visual > polygon) {
+    fill: #1e1e1e !important;
   }
 
   .errors-panel {
@@ -388,9 +455,6 @@
     .error-item.warning {
       background: #451a03;
       color: #fcd34d;
-    }
-    .viewer {
-      background: #1a1a1a;
     }
   }
 
