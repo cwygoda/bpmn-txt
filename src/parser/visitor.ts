@@ -459,10 +459,12 @@ export class BpmnMdVisitor extends BaseCstVisitor {
   }
 
   sequenceFlowDecl(ctx: CstChildren): SequenceFlow {
+    const idToken = (ctx.id as IToken[])?.[0];
     const flow: SequenceFlow = {
       id: img(ctx.id as IToken[]),
       from: '',
       to: '',
+      loc: loc(idToken),
     };
 
     if (ctx.nameAttr) flow.name = this.visit(ctx.nameAttr[0] as CstNode);
@@ -474,10 +476,12 @@ export class BpmnMdVisitor extends BaseCstVisitor {
   }
 
   messageFlowDecl(ctx: CstChildren): MessageFlow {
+    const idToken = (ctx.id as IToken[])?.[0];
     const flow: MessageFlow = {
       id: img(ctx.id as IToken[]),
       from: '',
       to: '',
+      loc: loc(idToken),
     };
 
     if (ctx.nameAttr) flow.name = this.visit(ctx.nameAttr[0] as CstNode);

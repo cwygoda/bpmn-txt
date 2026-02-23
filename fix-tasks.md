@@ -434,7 +434,7 @@ const results = await linter.lint(moddleRoot);
 | A | ~~A2. Data association resolution~~ | ✅ Done | Small |
 | A | ~~A3. Multiline string parsing~~ | ✅ Done | Medium |
 | B | ~~B1. Gateway type default~~ | ✅ Done | Trivial |
-| B | B2. Unresolved ref locations | Medium | Small |
+| B | ~~B2. Unresolved ref locations~~ | ✅ Done | Small |
 | C | C1. Invalid fixtures | Medium | Small |
 | C | C2. XSD validation | Low | Medium |
 | D | D1. EBNF grammar docs | Low | Small |

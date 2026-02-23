@@ -162,6 +162,23 @@ describe('Validator', () => {
     expect(result.errors.filter((e) => e.code === 'UNRESOLVED_REFERENCE').length).toBe(2);
   });
 
+  it('includes location in unresolved reference errors', () => {
+    const input = `process: test
+  task: task-a
+    name: "Task A"
+  flow: f1
+    from: task-a
+    to: nonexistent
+`;
+    const { document } = parse(input);
+    const result = validate(document!);
+    expect(result.valid).toBe(false);
+    const unresolvedError = result.errors.find((e) => e.code === 'UNRESOLVED_REFERENCE');
+    expect(unresolvedError).toBeDefined();
+    expect(unresolvedError!.loc).toBeDefined();
+    expect(unresolvedError!.loc!.start.line).toBeGreaterThan(0);
+  });
+
   it('validates complex workflow', () => {
     const input = `process: order
   pool: p1

@@ -35,19 +35,20 @@ export function validate(doc: Document): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationError[] = [];
   const allIds = new Map<string, ElementInfo>();
-  const referencedIds = new Set<string>();
+  const referencedIds = new Map<string, SourceSpan | undefined>();
 
   for (const process of doc.processes) {
     validateProcess(process, allIds, referencedIds, errors, warnings);
   }
 
   // Check for unresolved references
-  for (const refId of referencedIds) {
+  for (const [refId, refLoc] of referencedIds) {
     if (!allIds.has(refId)) {
       errors.push({
         code: 'UNRESOLVED_REFERENCE',
         message: `Reference to undefined element: ${refId}`,
         severity: 'error',
+        loc: refLoc,
       });
     }
   }
@@ -62,7 +63,7 @@ export function validate(doc: Document): ValidationResult {
 function validateProcess(
   process: Process,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[],
   warnings: ValidationError[]
 ): void {
@@ -113,7 +114,7 @@ function validateProcess(
         registerElement(annotation.id, 'annotation', annotation.loc, allIds, errors);
       }
       if (annotation.annotates) {
-        referencedIds.add(annotation.annotates);
+        addReference(referencedIds, annotation.annotates, annotation.loc);
       }
     }
   }
@@ -126,7 +127,7 @@ function validateProcess(
       }
       if (group.elements) {
         for (const elemId of group.elements) {
-          referencedIds.add(elemId);
+          addReference(referencedIds, elemId, group.loc);
         }
       }
     }
@@ -136,7 +137,7 @@ function validateProcess(
 function validatePool(
   pool: Pool,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[],
   warnings: ValidationError[]
 ): void {
@@ -166,7 +167,7 @@ function validatePool(
 function validateLane(
   lane: Lane,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[],
   warnings: ValidationError[]
 ): void {
@@ -190,7 +191,7 @@ function validateLane(
 function validateFlowNode(
   node: FlowNode,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[],
   warnings: ValidationError[]
 ): void {
@@ -269,7 +270,7 @@ function validateFlowNode(
       }
       // Default flow reference
       if (node.default) {
-        referencedIds.add(node.default);
+        addReference(referencedIds, node.default, node.loc);
       }
       break;
 
@@ -314,7 +315,7 @@ function validateFlowNode(
 function validateSequenceFlow(
   flow: SequenceFlow,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[]
 ): void {
   if (flow.id) {
@@ -329,7 +330,7 @@ function validateSequenceFlow(
       loc: flow.loc,
     });
   } else {
-    referencedIds.add(flow.from);
+    addReference(referencedIds, flow.from, flow.loc);
   }
 
   if (!flow.to) {
@@ -340,14 +341,14 @@ function validateSequenceFlow(
       loc: flow.loc,
     });
   } else {
-    referencedIds.add(flow.to);
+    addReference(referencedIds, flow.to, flow.loc);
   }
 }
 
 function validateMessageFlow(
   flow: MessageFlow,
   allIds: Map<string, ElementInfo>,
-  referencedIds: Set<string>,
+  referencedIds: Map<string, SourceSpan | undefined>,
   errors: ValidationError[]
 ): void {
   if (flow.id) {
@@ -362,7 +363,7 @@ function validateMessageFlow(
       loc: flow.loc,
     });
   } else {
-    referencedIds.add(flow.from);
+    addReference(referencedIds, flow.from, flow.loc);
   }
 
   if (!flow.to) {
@@ -373,7 +374,20 @@ function validateMessageFlow(
       loc: flow.loc,
     });
   } else {
-    referencedIds.add(flow.to);
+    addReference(referencedIds, flow.to, flow.loc);
+  }
+}
+
+/**
+ * Add a reference to the map, keeping the first occurrence location
+ */
+function addReference(
+  referencedIds: Map<string, SourceSpan | undefined>,
+  refId: string,
+  loc: SourceSpan | undefined
+): void {
+  if (!referencedIds.has(refId)) {
+    referencedIds.set(refId, loc);
   }
 }
 
