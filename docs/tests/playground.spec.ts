@@ -64,6 +64,9 @@ test.describe('Playground', () => {
     // Wait for bpmn-txt to load
     await expect(page.locator('.status.success')).toBeVisible({ timeout: 10000 });
 
+    // Wait for __bpmnTxt to be exposed
+    await page.waitForFunction(() => (window as any).__bpmnTxt !== undefined, { timeout: 10000 });
+
     // flow: f1 is incorrectly indented under end: (4 spaces instead of 2)
     const testCode = `process: test
   start: s1
