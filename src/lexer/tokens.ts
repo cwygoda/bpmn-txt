@@ -336,6 +336,16 @@ export const Pipe = createToken({
   pattern: /\|/,
 });
 
+// Multiline content: | followed by newline and indented lines
+// Captures: |<newline><indented content>
+// Stops when encountering a line with less/equal indentation (non-space start after newline)
+// Final line doesn't require trailing newline (handles EOF without newline)
+export const MultilineContent = createToken({
+  name: 'MultilineContent',
+  pattern: /\|[ \t]*\r?\n(?:[ \t]+[^\r\n]*\r?\n)*(?:[ \t]+[^\r\n]*)?/,
+  line_breaks: true,
+});
+
 export const Dash = createToken({
   name: 'Dash',
   pattern: /-/,
@@ -444,6 +454,7 @@ export const allTokens = [
   RBracket,
   Comma,
   Colon,
+  MultilineContent, // Before Pipe (longer match)
   Pipe,
   Dash,
 

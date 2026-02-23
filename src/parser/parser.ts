@@ -670,10 +670,17 @@ export class BpmnMdParser extends CstParser {
   private documentationAttr = this.RULE('documentationAttr', () => {
     this.CONSUME(T.Documentation);
     this.OR([
-      { ALT: () => this.SUBRULE(this.stringValue) },
-      { ALT: () => this.SUBRULE(this.multilineString) },
+      {
+        ALT: () => {
+          this.SUBRULE(this.stringValue);
+          this.CONSUME(T.Newline);
+        },
+      },
+      {
+        // MultilineContent already includes trailing newlines
+        ALT: () => this.SUBRULE(this.multilineString),
+      },
     ]);
-    this.CONSUME(T.Newline);
   });
 
   private implementationAttr = this.RULE('implementationAttr', () => {
@@ -691,10 +698,17 @@ export class BpmnMdParser extends CstParser {
   private scriptAttr = this.RULE('scriptAttr', () => {
     this.CONSUME(T.Script);
     this.OR([
-      { ALT: () => this.SUBRULE(this.stringValue) },
-      { ALT: () => this.SUBRULE(this.multilineString) },
+      {
+        ALT: () => {
+          this.SUBRULE(this.stringValue);
+          this.CONSUME(T.Newline);
+        },
+      },
+      {
+        // MultilineContent already includes trailing newlines
+        ALT: () => this.SUBRULE(this.multilineString),
+      },
     ]);
-    this.CONSUME(T.Newline);
   });
 
   private scriptFormatAttr = this.RULE('scriptFormatAttr', () => {
@@ -760,10 +774,17 @@ export class BpmnMdParser extends CstParser {
   private textAttr = this.RULE('textAttr', () => {
     this.CONSUME(T.Text);
     this.OR([
-      { ALT: () => this.SUBRULE(this.stringValue) },
-      { ALT: () => this.SUBRULE(this.multilineString) },
+      {
+        ALT: () => {
+          this.SUBRULE(this.stringValue);
+          this.CONSUME(T.Newline);
+        },
+      },
+      {
+        // MultilineContent already includes trailing newlines
+        ALT: () => this.SUBRULE(this.multilineString),
+      },
     ]);
-    this.CONSUME(T.Newline);
   });
 
   private annotatesAttr = this.RULE('annotatesAttr', () => {
@@ -804,9 +825,7 @@ export class BpmnMdParser extends CstParser {
   });
 
   private multilineString = this.RULE('multilineString', () => {
-    this.CONSUME(T.Pipe);
-    // Multiline content is handled by collecting subsequent indented lines
-    // For now, we'll mark the start; actual collection happens in visitor
+    this.CONSUME(T.MultilineContent, { LABEL: 'content' });
   });
 
   private array = this.RULE('array', () => {

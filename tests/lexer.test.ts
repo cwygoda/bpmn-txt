@@ -98,11 +98,15 @@ process: test`);
   it('tokenizes multiline strings', () => {
     const input = `documentation: |
     This is multiline
-    documentation text`;
+    documentation text
+`;
     const { tokens, errors } = lex(input);
     expect(errors).toHaveLength(0);
     expect(tokens[0].tokenType.name).toBe('Documentation');
-    expect(tokens[1].tokenType.name).toBe('Pipe');
+    expect(tokens[1].tokenType.name).toBe('MultilineContent');
+    // Verify the content is captured
+    expect(tokens[1].image).toContain('This is multiline');
+    expect(tokens[1].image).toContain('documentation text');
   });
 
   it('tokenizes layout block', () => {

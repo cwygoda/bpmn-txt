@@ -459,4 +459,65 @@ describe('Parser', () => {
     expect(task.dataOutputAssociations).toHaveLength(1);
     expect(task.dataOutputAssociations![0].target).toBe('output-data');
   });
+
+  // Multiline string tests
+  it('parses multiline documentation', () => {
+    const input = `process: test
+  documentation: |
+    This is line 1.
+    This is line 2.
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document!.processes[0].documentation).toBe('This is line 1.\nThis is line 2.');
+  });
+
+  it('parses multiline script', () => {
+    const input = `process: test
+  task: compute
+    type: script
+    scriptFormat: javascript
+    script: |
+      const x = 1;
+      return x + 2;
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const task = document!.processes[0].elements![0] as { script?: string };
+    expect(task.script).toBe('const x = 1;\nreturn x + 2;');
+  });
+
+  it('parses multiline annotation text', () => {
+    const input = `process: test
+  annotation: note-1
+    text: |
+      Important note.
+      Multiple lines.
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document!.processes[0].annotations![0].text).toBe('Important note.\nMultiple lines.');
+  });
+
+  it('handles varying indentation in multiline content', () => {
+    const input = `process: test
+  documentation: |
+    Line at base indent.
+      Indented line.
+    Back to base.
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document!.processes[0].documentation).toBe('Line at base indent.\n  Indented line.\nBack to base.');
+  });
+
+  it('handles multiline content without trailing newline', () => {
+    // Note: no newline at end of string
+    const input = `process: test
+  documentation: |
+    No trailing newline`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document!.processes[0].documentation).toBe('No trailing newline');
+  });
 });

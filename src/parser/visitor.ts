@@ -719,10 +719,37 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     return !!ctx.True;
   }
 
-  multilineString(_ctx: CstChildren): string {
-    // Multiline strings need special handling in a post-process step
-    // For now return empty - this would be enhanced to collect indented lines
-    return '';
+  multilineString(ctx: CstChildren): string {
+    const token = (ctx.content as IToken[])?.[0];
+    if (!token) return '';
+
+    const raw = token.image;
+    // Remove leading | and whitespace, then first newline
+    const withoutPipe = raw.replace(/^\|[ \t]*\r?\n/, '');
+
+    // Split into lines
+    const lines = withoutPipe.split(/\r?\n/);
+
+    // Find minimum indentation (ignoring empty lines)
+    let minIndent = Infinity;
+    for (const line of lines) {
+      if (line.trim().length === 0) continue;
+      const match = line.match(/^[ \t]*/);
+      if (match) {
+        minIndent = Math.min(minIndent, match[0].length);
+      }
+    }
+
+    // If no content, return empty
+    if (minIndent === Infinity) return '';
+
+    // Dedent all lines and join
+    const dedented = lines
+      .map((line) => (line.length >= minIndent ? line.slice(minIndent) : line))
+      .join('\n')
+      .replace(/\n+$/, ''); // Trim trailing newlines
+
+    return dedented;
   }
 
   array(ctx: CstChildren): string[] {
