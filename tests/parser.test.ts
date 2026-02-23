@@ -335,4 +335,77 @@ describe('Parser', () => {
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0].line).toBe(5);
   });
+
+  // Inline flow tests
+  it('resolves inline flow to sequence flow', () => {
+    const input = `process: test
+  start: begin
+    -> do-work
+  task: do-work
+    -> finish
+  end: finish
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document!.processes[0].sequenceFlows).toHaveLength(2);
+    expect(document!.processes[0].sequenceFlows![0].from).toBe('begin');
+    expect(document!.processes[0].sequenceFlows![0].to).toBe('do-work');
+    expect(document!.processes[0].sequenceFlows![1].from).toBe('do-work');
+    expect(document!.processes[0].sequenceFlows![1].to).toBe('finish');
+  });
+
+  it('resolves inline flow with condition', () => {
+    const input = `process: test
+  gateway: check
+    type: exclusive
+    -> yes-path {condition: "approved == true"}
+    -> no-path {condition: "approved == false"}
+  task: yes-path
+  task: no-path
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const flows = document!.processes[0].sequenceFlows!;
+    expect(flows).toHaveLength(2);
+    expect(flows[0].from).toBe('check');
+    expect(flows[0].to).toBe('yes-path');
+    expect(flows[0].condition).toBe('approved == true');
+    expect(flows[1].condition).toBe('approved == false');
+  });
+
+  it('resolves inline flow with name', () => {
+    const input = `process: test
+  gateway: decision
+    -> approve {name: "Yes"}
+    -> reject {name: "No"}
+  task: approve
+  task: reject
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const flows = document!.processes[0].sequenceFlows!;
+    expect(flows[0].name).toBe('Yes');
+    expect(flows[1].name).toBe('No');
+  });
+
+  it('combines inline and explicit flows', () => {
+    const input = `process: test
+  start: begin
+    -> task-a
+  task: task-a
+  task: task-b
+  end: finish
+
+  flow: explicit-flow
+    from: task-a
+    to: task-b
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    const flows = document!.processes[0].sequenceFlows!;
+    expect(flows).toHaveLength(2);
+    // Explicit flow comes first (parsed first), then inline flow added
+    expect(flows.some(f => f.id === 'explicit-flow')).toBe(true);
+    expect(flows.some(f => f.from === 'begin' && f.to === 'task-a')).toBe(true);
+  });
 });

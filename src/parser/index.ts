@@ -1,7 +1,7 @@
 import type { IToken } from 'chevrotain';
 import { lex } from '../lexer/index.js';
 import { parser } from './parser.js';
-import { visitor } from './visitor.js';
+import { visitor, type InlineFlowInfo } from './visitor.js';
 import type { Document, SequenceFlow, FlowNode, Pool, Lane, Process } from '../ast/types.js';
 
 export { parser, visitor };
@@ -54,61 +54,34 @@ export function parse(input: string): ParseResult {
   // Visit CST to build AST
   const document = visitor.visit(cst) as Document;
 
-  // Post-process: resolve inline flows
-  resolveInlineFlows(document, input);
+  // Get collected inline flows from visitor
+  const collectedFlows = visitor.getCollectedFlows();
+
+  // Post-process: add inline flows to document
+  if (collectedFlows.length > 0) {
+    addInlineFlowsToDocument(document, collectedFlows);
+  }
 
   return { document, errors };
 }
 
 /**
- * Collect inline flows (-> target) and convert to explicit SequenceFlow entries
+ * Add collected inline flows to the document as SequenceFlow entries
  */
-function resolveInlineFlows(doc: Document, source: string): void {
-  for (const process of doc.processes) {
-    const flows: SequenceFlow[] = process.sequenceFlows ?? [];
+function addInlineFlowsToDocument(doc: Document, flows: InlineFlowInfo[]): void {
+  // Convert InlineFlowInfo to SequenceFlow
+  const sequenceFlows: SequenceFlow[] = flows.map((flow, index) => ({
+    id: `flow_${flow.from}_${flow.to}_${index}`,
+    from: flow.from,
+    to: flow.to,
+    ...(flow.condition && { condition: flow.condition }),
+    ...(flow.name && { name: flow.name }),
+  }));
 
-    // Process pools
-    if (process.pools) {
-      for (const pool of process.pools) {
-        collectFlowsFromContainer(pool, flows, source);
-        if (pool.lanes) {
-          for (const lane of pool.lanes) {
-            collectFlowsFromContainer(lane, flows, source);
-          }
-        }
-      }
-    }
-
-    // Process direct elements
-    if (process.elements) {
-      collectFlowsFromElements(process.elements, flows, source);
-    }
-
-    if (flows.length > 0) {
-      process.sequenceFlows = flows;
-    }
+  // Add flows to the first process (most common case)
+  // TODO: For multi-process documents, could infer correct process from element location
+  if (doc.processes.length > 0) {
+    const process = doc.processes[0];
+    process.sequenceFlows = [...(process.sequenceFlows ?? []), ...sequenceFlows];
   }
-}
-
-function collectFlowsFromContainer(
-  container: Pool | Lane,
-  flows: SequenceFlow[],
-  source: string
-): void {
-  if (container.elements) {
-    collectFlowsFromElements(container.elements, flows, source);
-  }
-  if (container.sequenceFlows) {
-    flows.push(...container.sequenceFlows);
-  }
-}
-
-function collectFlowsFromElements(
-  elements: FlowNode[],
-  flows: SequenceFlow[],
-  _source: string
-): void {
-  // This requires re-parsing to extract inline flows
-  // For now, inline flows would need to be tracked during CST visiting
-  // TODO: Enhanced visitor to track inline flows per element
 }

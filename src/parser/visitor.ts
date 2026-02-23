@@ -71,17 +71,53 @@ interface CstChildren {
   [key: string]: CstNode[] | IToken[] | undefined;
 }
 
+export interface InlineFlowInfo {
+  from: string;
+  to: string;
+  condition?: string;
+  name?: string;
+}
+
 export class BpmnMdVisitor extends BaseCstVisitor {
   // Track current element for inline flow resolution
   private currentElementId: string | undefined;
-  private pendingFlows: Array<{ from: string; to: string; attrs: Record<string, unknown> }> = [];
+  private collectedFlows: InlineFlowInfo[] = [];
 
   constructor() {
     super();
     this.validateVisitor();
   }
 
+  /** Get collected inline flows (call after visiting) */
+  getCollectedFlows(): InlineFlowInfo[] {
+    return this.collectedFlows;
+  }
+
+  /** Reset state for new parse */
+  reset(): void {
+    this.currentElementId = undefined;
+    this.collectedFlows = [];
+  }
+
+  /** Capture inline flows from element context */
+  private captureInlineFlows(fromId: string, ctx: CstChildren): void {
+    if (ctx.inlineFlow) {
+      for (const flowNode of ctx.inlineFlow as CstNode[]) {
+        const { to, attrs } = this.visit(flowNode) as { to: string; attrs: Record<string, unknown> };
+        this.collectedFlows.push({
+          from: fromId,
+          to,
+          condition: attrs.condition as string | undefined,
+          name: attrs.name as string | undefined,
+        });
+      }
+    }
+  }
+
   document(ctx: CstChildren): Document {
+    // Reset state for each document parse
+    this.reset();
+
     const processes: Process[] = [];
     if (ctx.processDecl) {
       for (const node of ctx.processDecl as CstNode[]) {
@@ -217,6 +253,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.signalAttr) event.signal = this.visit(ctx.signalAttr[0] as CstNode);
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
 
+    // Capture inline flows
+    this.captureInlineFlows(event.id!, ctx);
+
     return event;
   }
 
@@ -241,6 +280,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.errorAttr) event.error = this.visit(ctx.errorAttr[0] as CstNode);
     if (ctx.escalationAttr) event.escalation = this.visit(ctx.escalationAttr[0] as CstNode);
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
+
+    // Capture inline flows
+    this.captureInlineFlows(event.id!, ctx);
 
     return event;
   }
@@ -282,6 +324,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
     if (ctx.interruptingAttr) event.interrupting = this.visit(ctx.interruptingAttr[0] as CstNode);
 
+    // Capture inline flows
+    this.captureInlineFlows(event.id!, ctx);
+
     return event;
   }
 
@@ -306,6 +351,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
       task.boundaryEvents = (ctx.boundaryEvent as CstNode[]).map((n) => this.visit(n));
     }
 
+    // Capture inline flows
+    this.captureInlineFlows(task.id!, ctx);
+
     return task;
   }
 
@@ -327,6 +375,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
       subprocess.boundaryEvents = (ctx.boundaryEvent as CstNode[]).map((n) => this.visit(n));
     }
 
+    // Capture inline flows
+    this.captureInlineFlows(subprocess.id!, ctx);
+
     return subprocess;
   }
 
@@ -339,6 +390,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
 
     if (ctx.nameAttr) call.name = this.visit(ctx.nameAttr[0] as CstNode);
     if (ctx.calledElementAttr) call.calledElement = this.visit(ctx.calledElementAttr[0] as CstNode);
+
+    // Capture inline flows
+    this.captureInlineFlows(call.id!, ctx);
 
     return call;
   }
@@ -353,6 +407,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.nameAttr) gateway.name = this.visit(ctx.nameAttr[0] as CstNode);
     if (ctx.typeAttr) gateway.gatewayType = this.visit(ctx.typeAttr[0] as CstNode) as GatewayType;
     if (ctx.defaultAttr) gateway.default = this.visit(ctx.defaultAttr[0] as CstNode);
+
+    // Capture inline flows
+    this.captureInlineFlows(gateway.id!, ctx);
 
     return gateway;
   }
@@ -481,7 +538,14 @@ export class BpmnMdVisitor extends BaseCstVisitor {
   }
 
   inlineAttr(ctx: CstChildren): { key: string; value: unknown } {
-    const key = img(ctx.key as IToken[]);
+    let key: string;
+    if (ctx.keywordKey) {
+      // Keyword token includes colon (e.g., "condition:"), strip it
+      key = img(ctx.keywordKey as IToken[]).replace(/:$/, '');
+    } else {
+      // Regular identifier
+      key = img(ctx.key as IToken[]);
+    }
     const value = this.visit(ctx.attrValue![0] as CstNode);
     return { key, value };
   }

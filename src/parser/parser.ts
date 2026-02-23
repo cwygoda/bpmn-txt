@@ -574,8 +574,23 @@ export class BpmnMdParser extends CstParser {
   });
 
   private inlineAttr = this.RULE('inlineAttr', () => {
-    this.CONSUME(T.Identifier, { LABEL: 'key' });
-    this.CONSUME(T.Colon);
+    // Handle keyword tokens (which include colon) or Identifier + Colon
+    this.OR([
+      // Keyword tokens (include colon, commonly used in inline attrs)
+      { ALT: () => this.CONSUME(T.Condition, { LABEL: 'keywordKey' }) },
+      { ALT: () => this.CONSUME(T.Name, { LABEL: 'keywordKey' }) },
+      { ALT: () => this.CONSUME(T.X, { LABEL: 'keywordKey' }) },
+      { ALT: () => this.CONSUME(T.Y, { LABEL: 'keywordKey' }) },
+      { ALT: () => this.CONSUME(T.Width, { LABEL: 'keywordKey' }) },
+      { ALT: () => this.CONSUME(T.Height, { LABEL: 'keywordKey' }) },
+      // Fallback: Identifier + Colon
+      {
+        ALT: () => {
+          this.CONSUME(T.Identifier, { LABEL: 'key' });
+          this.CONSUME(T.Colon);
+        },
+      },
+    ]);
     this.SUBRULE(this.attrValue);
   });
 
