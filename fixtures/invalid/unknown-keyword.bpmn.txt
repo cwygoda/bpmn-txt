@@ -1,0 +1,4 @@
+# Invalid element type
+process: test
+  widget: w1
+    name: "Unknown"

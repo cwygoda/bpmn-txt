@@ -1,0 +1,7 @@
+# Flow to nonexistent target
+process: test
+  task: task-a
+    name: "Task A"
+  flow: f1
+    from: task-a
+    to: nonexistent-task

@@ -1,0 +1,6 @@
+# Same id used twice
+process: test
+  task: my-task
+    name: "Task 1"
+  task: my-task
+    name: "Task 2"

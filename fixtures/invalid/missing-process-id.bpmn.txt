@@ -1,0 +1,4 @@
+# Process without id (should fail validation)
+process:
+  task: t1
+    name: "Task"

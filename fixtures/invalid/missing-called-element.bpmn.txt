@@ -1,0 +1,4 @@
+# Call activity without calledElement
+process: test
+  call: c1
+    name: "My Call"
