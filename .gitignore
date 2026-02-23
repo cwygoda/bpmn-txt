@@ -6,3 +6,5 @@ coverage/
 docs/.svelte-kit/
 docs/build/
 docs/node_modules/
+docs/test-results/
+docs/playwright-report/

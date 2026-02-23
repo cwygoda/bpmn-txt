@@ -30,7 +30,8 @@
 
   flow: f2
     from: greet
-    to: finish`;
+    to: finish
+`;
 
   onMount(async () => {
     // Dynamically import browser-only modules
