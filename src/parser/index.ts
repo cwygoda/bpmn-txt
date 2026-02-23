@@ -18,7 +18,7 @@ export interface ParseResult {
 }
 
 /**
- * Parse BPMN-MD source into AST Document
+ * Parse BPMN-TXT source into AST Document
  */
 export function parse(input: string): ParseResult {
   const errors: ParseError[] = [];

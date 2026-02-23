@@ -1,4 +1,4 @@
-// BPMN-MD: Text DSL for BPMN 2.0
+// BPMN-TXT: Text DSL for BPMN 2.0
 
 export * from './ast/index.js';
 export { parse } from './parser/index.js';

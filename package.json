@@ -1,12 +1,12 @@
 {
-  "name": "bpmn-md",
+  "name": "bpmn-txt",
   "version": "0.1.0",
   "description": "Text DSL for BPMN 2.0 - human-readable process definitions",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "bpmn-md": "dist/cli.js"
+    "bpmn-txt": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

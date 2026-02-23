@@ -10,7 +10,7 @@ import { toJson, toBpmnXmlAsync } from './generators/index.js';
 import type { ParseError } from './parser/index.js';
 import type { ValidationError } from './validator/index.js';
 
-const cli = cac('bpmn-md');
+const cli = cac('bpmn-txt');
 
 interface CompileOptions {
   output?: string;

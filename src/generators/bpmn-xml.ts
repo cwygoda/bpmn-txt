@@ -135,7 +135,7 @@ function buildDefinitions(doc: Document, includeDiagram: boolean, layout: Layout
       '@_xmlns:xsi': XSI_NS,
       '@_id': 'Definitions_1',
       '@_targetNamespace': 'http://bpmn.io/schema/bpmn',
-      '@_exporter': 'bpmn-md',
+      '@_exporter': 'bpmn-txt',
       '@_exporterVersion': '0.1.0',
     },
   };

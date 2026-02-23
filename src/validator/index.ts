@@ -29,7 +29,7 @@ interface ElementInfo {
 }
 
 /**
- * Validate a BPMN-MD document
+ * Validate a BPMN-TXT document
  */
 export function validate(doc: Document): ValidationResult {
   const errors: ValidationError[] = [];
