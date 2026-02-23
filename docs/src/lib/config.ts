@@ -18,7 +18,8 @@ export interface SidebarItem {
 export const nav: NavItem[] = [
   { text: 'Guide', link: '/guide' },
   { text: 'Reference', link: '/reference/syntax' },
-  { text: 'Examples', link: '/examples' }
+  { text: 'Examples', link: '/examples' },
+  { text: 'Playground', link: '/playground' }
 ];
 
 export const sidebar: Record<string, SidebarItem[]> = {

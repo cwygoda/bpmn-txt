@@ -17,5 +17,14 @@
     "svelte": "^5.19.0",
     "typescript": "^5.7.3",
     "vite": "^6.0.11"
+  },
+  "dependencies": {
+    "codemirror": "^6.0.1",
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.4",
+    "@codemirror/language": "^6.10.8",
+    "bpmn-js": "^18.3.1",
+    "bpmn-txt": "link:.."
   }
 }
