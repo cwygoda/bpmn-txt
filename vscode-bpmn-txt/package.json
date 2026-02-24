@@ -1,0 +1,33 @@
+{
+  "name": "bpmn-txt",
+  "displayName": "BPMN-TXT",
+  "description": "Syntax highlighting for BPMN-TXT DSL",
+  "version": "0.1.0",
+  "publisher": "cwygoda",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "bpmn-txt",
+        "aliases": ["BPMN-TXT", "bpmn-txt"],
+        "extensions": [".bpmn.md", ".bpmn.txt", ".bpmntxt"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bpmn-txt",
+        "scopeName": "source.bpmn-txt",
+        "path": "./syntaxes/bpmn-txt.tmLanguage.json"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cwygoda/bpmn-txt"
+  },
+  "license": "MIT"
+}

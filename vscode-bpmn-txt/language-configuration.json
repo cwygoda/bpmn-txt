@@ -1,0 +1,26 @@
+{
+  "comments": {
+    "lineComment": "#"
+  },
+  "brackets": [
+    ["{", "}"],
+    ["[", "]"]
+  ],
+  "autoClosingPairs": [
+    { "open": "{", "close": "}" },
+    { "open": "[", "close": "]" },
+    { "open": "\"", "close": "\"" }
+  ],
+  "surroundingPairs": [
+    { "open": "{", "close": "}" },
+    { "open": "[", "close": "]" },
+    { "open": "\"", "close": "\"" }
+  ],
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(process|pool|lane|task|gateway|start|end|event|subprocess|call|boundary|flow|message-flow|data-object|data-store|annotation|group):\\s*\\S+",
+    "decreaseIndentPattern": "^\\s*$"
+  },
+  "folding": {
+    "offSide": true
+  }
+}

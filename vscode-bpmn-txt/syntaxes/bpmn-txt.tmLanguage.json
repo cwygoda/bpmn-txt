@@ -1,0 +1,162 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "BPMN-TXT",
+  "scopeName": "source.bpmn-txt",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#element-declaration" },
+    { "include": "#attribute" },
+    { "include": "#flow-arrow" },
+    { "include": "#string" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.number-sign.bpmn-txt"
+    },
+    "element-declaration": {
+      "patterns": [
+        {
+          "match": "^(\\s*)(process|pool|lane|subprocess|call)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.container.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.type.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(task|gateway)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.activity.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.function.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(start|end|event|boundary)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.event.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.tag.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(flow|message-flow)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.flow.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.label.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(data-object|data-store)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.data.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.class.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(annotation|group)(:)\\s*(\\S+)?",
+          "captures": {
+            "2": { "name": "keyword.control.artifact.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" },
+            "4": { "name": "entity.name.section.bpmn-txt" }
+          }
+        }
+      ]
+    },
+    "attribute": {
+      "patterns": [
+        {
+          "match": "^(\\s*)(name|type|from|to|condition|default)(:)",
+          "captures": {
+            "2": { "name": "variable.parameter.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(trigger|message|timer|signal|duration|interrupting)(:)",
+          "captures": {
+            "2": { "name": "variable.parameter.event.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(executable|documentation|calledElement)(:)",
+          "captures": {
+            "2": { "name": "variable.parameter.process.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(implementation|script|scriptFormat|class|assignee|candidateGroups)(:)",
+          "captures": {
+            "2": { "name": "variable.parameter.task.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" }
+          }
+        },
+        {
+          "match": "^(\\s*)(text|annotates|elements)(:)",
+          "captures": {
+            "2": { "name": "variable.parameter.artifact.bpmn-txt" },
+            "3": { "name": "punctuation.separator.bpmn-txt" }
+          }
+        },
+        {
+          "comment": "Attribute values - element type values",
+          "match": "\\b(user|service|script|send|receive|manual|businessRule)\\b",
+          "name": "constant.language.task-type.bpmn-txt"
+        },
+        {
+          "comment": "Gateway type values",
+          "match": "\\b(exclusive|parallel|inclusive|eventBased|complex)\\b",
+          "name": "constant.language.gateway-type.bpmn-txt"
+        },
+        {
+          "comment": "Event trigger values",
+          "match": "\\b(none|message|timer|signal|conditional|error|terminate|compensation|escalation|link|catch|throw)\\b",
+          "name": "constant.language.event-type.bpmn-txt"
+        },
+        {
+          "comment": "Boolean values",
+          "match": "\\b(true|false)\\b",
+          "name": "constant.language.boolean.bpmn-txt"
+        }
+      ]
+    },
+    "flow-arrow": {
+      "match": "(->)\\s*(\\S+)?",
+      "captures": {
+        "1": { "name": "keyword.operator.arrow.bpmn-txt" },
+        "2": { "name": "variable.other.reference.bpmn-txt" }
+      }
+    },
+    "string": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.bpmn-txt",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.bpmn-txt"
+            }
+          ]
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.bpmn-txt",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.bpmn-txt"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
