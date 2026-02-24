@@ -1,19 +1,32 @@
 {
   "name": "bpmn-txt",
   "displayName": "BPMN-TXT",
-  "description": "Syntax highlighting for BPMN-TXT DSL",
+  "description": "Language support for BPMN-TXT DSL",
   "version": "0.1.0",
   "publisher": "cwygoda",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:bpmn-txt"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "bpmn-txt",
-        "aliases": ["BPMN-TXT", "bpmn-txt"],
-        "extensions": [".bpmn.md", ".bpmn.txt", ".bpmntxt"],
+        "aliases": [
+          "BPMN-TXT",
+          "bpmn-txt"
+        ],
+        "extensions": [
+          ".bpmn.md",
+          ".bpmn.txt",
+          ".bpmntxt"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -23,7 +36,41 @@
         "scopeName": "source.bpmn-txt",
         "path": "./syntaxes/bpmn-txt.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "bpmn-txt.showPreview",
+        "title": "BPMN-TXT: Show Diagram Preview",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "bpmn-txt.showPreview",
+          "when": "editorLangId == bpmn-txt",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm build --production",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bpmn-txt": "link:..",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.2",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",

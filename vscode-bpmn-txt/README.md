@@ -1,67 +1,72 @@
 # BPMN-TXT for VS Code
 
-Syntax highlighting for the [BPMN-TXT](https://github.com/cwygoda/bpmn-txt) DSL.
+Full language support for the [BPMN-TXT](https://github.com/cwygoda/bpmn-txt) DSL.
 
 ## Features
 
-- Syntax highlighting for `.bpmn.md`, `.bpmn.txt`, and `.bpmntxt` files
-- Bracket matching and auto-closing
-- Comment toggling with `#`
-- Indentation-based folding
+### Syntax Highlighting
+- Element keywords (`process`, `task`, `gateway`, etc.)
+- Attributes, types, and values
+- Flow arrows (`->`)
+- Comments (`#`)
+
+### Diagnostics
+- Real-time parse error detection
+- Validation warnings (duplicate IDs, unresolved references)
+- Error locations with line/column
+
+### Autocomplete
+- Element keywords at line start
+- Attribute names based on parent element
+- Type values (`user`, `service`, `exclusive`, etc.)
+- Element ID completion for `from:`/`to:` references
+
+### Go to Definition
+- Click on `from:` or `to:` references to jump to element definition
+
+### Live Preview
+- Side-by-side BPMN diagram preview
+- Auto-updates on save
+- Dark mode support
 
 ## Installation
 
 ### From source
 
-1. Clone or copy the `vscode-bpmn-txt` folder
-2. Copy to your VS Code extensions directory:
-   - **macOS**: `~/.vscode/extensions/bpmn-txt-0.1.0`
-   - **Linux**: `~/.vscode/extensions/bpmn-txt-0.1.0`
-   - **Windows**: `%USERPROFILE%\.vscode\extensions\bpmn-txt-0.1.0`
-3. Restart VS Code
+```bash
+cd vscode-bpmn-txt
+pnpm install
+pnpm build
+```
 
-### Using symlink (development)
+Then copy or symlink to VS Code extensions:
 
 ```bash
-ln -s /path/to/vscode-bpmn-txt ~/.vscode/extensions/bpmn-txt-0.1.0
+# macOS/Linux
+ln -s $(pwd) ~/.vscode/extensions/bpmn-txt-0.1.0
+
+# Windows
+mklink /D %USERPROFILE%\.vscode\extensions\bpmn-txt-0.1.0 %cd%
 ```
 
-## Highlighted Elements
+Restart VS Code to activate.
 
-| Category | Keywords |
-|----------|----------|
-| Containers | `process`, `pool`, `lane`, `subprocess`, `call` |
-| Activities | `task`, `gateway` |
-| Events | `start`, `end`, `event`, `boundary` |
-| Flows | `flow`, `message-flow`, `->` |
-| Data | `data-object`, `data-store` |
-| Artifacts | `annotation`, `group` |
+## Usage
 
-## Example
+1. Open any `.bpmn.md`, `.bpmn.txt`, or `.bpmntxt` file
+2. Use `Cmd+Shift+P` (or `Ctrl+Shift+P`) → "BPMN-TXT: Show Diagram Preview"
+3. Or click the preview icon in the editor title bar
 
-```bpmn-txt
-process: order-fulfillment
-  name: "Order Fulfillment"
+## Commands
 
-  start: order-received
-    name: "Order Received"
+| Command | Description |
+|---------|-------------|
+| `BPMN-TXT: Show Diagram Preview` | Open side-by-side BPMN diagram |
 
-  task: validate-order
-    name: "Validate Order"
-    type: service
+## File Associations
 
-  gateway: is-valid
-    type: exclusive
-    name: "Valid?"
-
-  end: order-complete
-    name: "Complete"
-
-  flow: f1
-    from: order-received
-    to: validate-order
-
-  flow: f2
-    from: validate-order
-    to: is-valid
-```
+| Extension | Language |
+|-----------|----------|
+| `.bpmn.md` | BPMN-TXT |
+| `.bpmn.txt` | BPMN-TXT |
+| `.bpmntxt` | BPMN-TXT |
