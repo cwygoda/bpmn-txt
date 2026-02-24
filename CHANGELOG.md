@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/cwygoda/bpmn-txt/compare/v0.1.0...v0.1.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **ci:** release after CI passes, not in parallel ([7fe43ab](https://github.com/cwygoda/bpmn-txt/commit/7fe43abe13bb76de3f68fe76d74205747de3fb2b))
+
 # [0.1.0](https://github.com/cwygoda/bpmn-txt/compare/v0.0.0...v0.1.0) (2026-02-24)
 
 
