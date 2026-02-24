@@ -1,3 +1,10 @@
+# [0.2.0](https://github.com/cwygoda/bpmn-txt/compare/v0.1.1...v0.2.0) (2026-02-24)
+
+
+### Features
+
+* **vscode:** add syntax highlighting extension ([07d3a96](https://github.com/cwygoda/bpmn-txt/commit/07d3a96d788845b8dbda1936babc7ab2023f6b4a))
+
 ## [0.1.1](https://github.com/cwygoda/bpmn-txt/compare/v0.1.0...v0.1.1) (2026-02-24)
 
 
