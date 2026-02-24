@@ -154,20 +154,46 @@ function getPreviewHtml(xml: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BPMN Preview</title>
-  <script src="https://unpkg.com/bpmn-js@18/dist/bpmn-viewer.production.min.js"></script>
+  <script src="https://unpkg.com/bpmn-js@18/dist/bpmn-navigated-viewer.production.min.js"></script>
   <style>
-    html, body, #canvas {
+    html, body {
       height: 100%;
       margin: 0;
       padding: 0;
+      overflow: hidden;
     }
     #canvas {
+      height: 100%;
       background: var(--vscode-editor-background, #1e1e1e);
     }
     .error {
       color: var(--vscode-errorForeground, #f44);
       padding: 20px;
       font-family: var(--vscode-font-family, monospace);
+    }
+    #controls {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      gap: 4px;
+      z-index: 100;
+    }
+    #controls button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--vscode-button-border, #444);
+      background: var(--vscode-button-background, #333);
+      color: var(--vscode-button-foreground, #fff);
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #controls button:hover {
+      background: var(--vscode-button-hoverBackground, #444);
     }
     /* Dark mode diagram colors */
     .djs-shape .djs-visual > rect,
@@ -195,13 +221,24 @@ function getPreviewHtml(xml: string): string {
 </head>
 <body>
   <div id="canvas"></div>
+  <div id="controls">
+    <button id="zoom-in" title="Zoom in">+</button>
+    <button id="zoom-out" title="Zoom out">−</button>
+    <button id="zoom-fit" title="Fit to viewport">⊡</button>
+  </div>
   <script>
     (async function() {
       try {
         const xml = ${escaped};
         const viewer = new BpmnJS({ container: '#canvas' });
         await viewer.importXML(xml);
-        viewer.get('canvas').zoom('fit-viewport');
+        const canvas = viewer.get('canvas');
+        canvas.zoom('fit-viewport');
+
+        // Zoom controls
+        document.getElementById('zoom-in').onclick = () => canvas.zoom(canvas.zoom() * 1.2);
+        document.getElementById('zoom-out').onclick = () => canvas.zoom(canvas.zoom() / 1.2);
+        document.getElementById('zoom-fit').onclick = () => canvas.zoom('fit-viewport');
       } catch (err) {
         document.getElementById('canvas').innerHTML =
           '<div class="error">Error rendering diagram: ' + err.message + '</div>';
