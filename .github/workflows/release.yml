@@ -1,7 +1,9 @@
 name: Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
 # Only one release at a time
@@ -13,8 +15,8 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
-    # Skip if commit message contains [skip ci] or [skip release]
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    # Only run if CI succeeded
+    if: github.event.workflow_run.conclusion == 'success'
 
     permissions:
       contents: write
