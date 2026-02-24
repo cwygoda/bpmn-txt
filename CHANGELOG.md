@@ -1,3 +1,10 @@
+# [0.4.0](https://github.com/cwygoda/bpmn-txt/compare/v0.3.0...v0.4.0) (2026-02-24)
+
+
+### Features
+
+* **vscode:** add zoom controls to preview ([763d808](https://github.com/cwygoda/bpmn-txt/commit/763d80845fac65d711183502dc0bda2cd5279f69))
+
 # [0.3.0](https://github.com/cwygoda/bpmn-txt/compare/v0.2.0...v0.3.0) (2026-02-24)
 
 
