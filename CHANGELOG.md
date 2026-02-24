@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/cwygoda/bpmn-txt/compare/v0.2.0...v0.3.0) (2026-02-24)
+
+
+### Features
+
+* **vscode:** add LSP with diagnostics, completion, go-to-def, preview ([75c1e14](https://github.com/cwygoda/bpmn-txt/commit/75c1e149787a112662039a24c431c4d08e2ad95c))
+
 # [0.2.0](https://github.com/cwygoda/bpmn-txt/compare/v0.1.1...v0.2.0) (2026-02-24)
 
 
