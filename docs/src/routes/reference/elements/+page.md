@@ -2,6 +2,23 @@
 
 Complete reference for all BPMN-TXT elements.
 
+## Common Metadata Attributes
+
+The following attributes are available on **all flow elements** (events, tasks, subprocesses, call activities, gateways) for service catalog integration:
+
+| Attribute | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `doc` | string | No | Markdown anchor linking the element to documentation |
+| `service` | string | No | Service identifier for service catalog references |
+
+```yaml
+task: validate-order
+  name: "Validate Order"
+  type: service
+  doc: order-validation
+  service: catalog-order-service
+```
+
 ## Process
 
 The root container for a BPMN process.
@@ -65,6 +82,8 @@ start: start-id
   timer: PT1H                # For timer trigger (ISO 8601)
   signal: SignalName         # For signal trigger
   condition: "expression"    # For conditional trigger
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 | Trigger | Description |
@@ -83,6 +102,8 @@ end: end-id
   name: "End"
   trigger: none|message|signal|error|terminate|compensation|escalation
   error: ErrorCode           # For error trigger
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 | Trigger | Description |
@@ -102,6 +123,8 @@ event: event-id
   name: "Event Name"
   type: catch|throw
   trigger: message|timer|signal|link|compensation|error|escalation|conditional
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 ### Boundary Event
@@ -123,6 +146,8 @@ task: parent-task
 | `type` | string | Yes | Trigger type |
 | `interrupting` | boolean | No | Interrupts parent (default: true) |
 | `duration` | string | No | Timer duration (ISO 8601) |
+| `doc` | string | No | Documentation link |
+| `service` | string | No | Service catalog reference |
 
 ## Tasks
 
@@ -130,6 +155,8 @@ task: parent-task
 task: task-id
   name: "Task Name"
   type: task|user|service|script|send|receive|manual|businessRule
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 ### Task Types
@@ -196,6 +223,8 @@ subprocess: sub-id
 |-----------|------|----------|-------------|
 | `name` | string | No | Display name |
 | `triggered` | boolean | No | Event subprocess (default: false) |
+| `doc` | string | No | Documentation link |
+| `service` | string | No | Service catalog reference |
 
 ## Call Activity
 
@@ -203,6 +232,8 @@ subprocess: sub-id
 call: call-id
   name: "Call External Process"
   calledElement: external-process-id
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 ## Gateways
@@ -212,6 +243,8 @@ gateway: gateway-id
   name: "Decision Point"
   type: exclusive|parallel|inclusive|eventBased|complex
   default: default-flow-id  # For exclusive/inclusive
+  doc: section-anchor        # Documentation link
+  service: service-id        # Service catalog reference
 ```
 
 | Type | Description |

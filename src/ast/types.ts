@@ -104,6 +104,8 @@ export const StartEventSchema = BaseNodeSchema.extend({
   timer: z.string().optional(),
   signal: z.string().optional(),
   condition: z.string().optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type StartEvent = z.infer<typeof StartEventSchema>;
@@ -119,6 +121,8 @@ export const IntermediateEventSchema = BaseNodeSchema.extend({
   error: z.string().optional(),
   escalation: z.string().optional(),
   condition: z.string().optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type IntermediateEvent = z.infer<typeof IntermediateEventSchema>;
@@ -130,6 +134,8 @@ export const EndEventSchema = BaseNodeSchema.extend({
   signal: z.string().optional(),
   error: z.string().optional(),
   escalation: z.string().optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type EndEvent = z.infer<typeof EndEventSchema>;
@@ -146,6 +152,8 @@ export const BoundaryEventSchema = BaseNodeSchema.extend({
   error: z.string().optional(),
   escalation: z.string().optional(),
   condition: z.string().optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type BoundaryEvent = z.infer<typeof BoundaryEventSchema>;
@@ -179,6 +187,8 @@ export const TaskSchema = BaseNodeSchema.extend({
   boundaryEvents: z.array(z.lazy(() => BoundaryEventSchema)).optional(),
   dataInputAssociations: z.array(z.lazy(() => DataAssociationSchema)).optional(),
   dataOutputAssociations: z.array(z.lazy(() => DataAssociationSchema)).optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -190,6 +200,8 @@ export const SubprocessSchema: z.ZodType<Subprocess> = BaseNodeSchema.extend({
   triggered: z.boolean().optional().default(false),
   elements: z.lazy(() => z.array(FlowNodeSchema)).optional(),
   boundaryEvents: z.array(z.lazy(() => BoundaryEventSchema)).optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export interface Subprocess extends z.infer<typeof BaseNodeSchema> {
@@ -197,6 +209,8 @@ export interface Subprocess extends z.infer<typeof BaseNodeSchema> {
   triggered?: boolean;
   elements?: FlowNode[];
   boundaryEvents?: BoundaryEvent[];
+  doc?: string;
+  service?: string;
 }
 
 // === Call Activity ===
@@ -204,6 +218,8 @@ export interface Subprocess extends z.infer<typeof BaseNodeSchema> {
 export const CallActivitySchema = BaseNodeSchema.extend({
   type: z.literal('callActivity'),
   calledElement: z.string(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type CallActivity = z.infer<typeof CallActivitySchema>;
@@ -223,6 +239,8 @@ export const GatewaySchema = BaseNodeSchema.extend({
   type: z.literal('gateway'),
   gatewayType: GatewayType,
   default: z.string().optional(),
+  doc: z.string().optional(),
+  service: z.string().optional(),
 });
 
 export type Gateway = z.infer<typeof GatewaySchema>;

@@ -252,6 +252,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.timerAttr) event.timer = this.visit(ctx.timerAttr[0] as CstNode);
     if (ctx.signalAttr) event.signal = this.visit(ctx.signalAttr[0] as CstNode);
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
+    if (ctx.docAttr) event.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) event.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     // Capture inline flows
     this.captureInlineFlows(event.id!, ctx);
@@ -280,6 +282,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.errorAttr) event.error = this.visit(ctx.errorAttr[0] as CstNode);
     if (ctx.escalationAttr) event.escalation = this.visit(ctx.escalationAttr[0] as CstNode);
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
+    if (ctx.docAttr) event.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) event.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     // Capture inline flows
     this.captureInlineFlows(event.id!, ctx);
@@ -300,6 +304,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.signalAttr) event.signal = this.visit(ctx.signalAttr[0] as CstNode);
     if (ctx.errorAttr) event.error = this.visit(ctx.errorAttr[0] as CstNode);
     if (ctx.escalationAttr) event.escalation = this.visit(ctx.escalationAttr[0] as CstNode);
+    if (ctx.docAttr) event.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) event.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     return event;
   }
@@ -323,6 +329,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.escalationAttr) event.escalation = this.visit(ctx.escalationAttr[0] as CstNode);
     if (ctx.conditionAttr) event.condition = this.visit(ctx.conditionAttr[0] as CstNode);
     if (ctx.interruptingAttr) event.interrupting = this.visit(ctx.interruptingAttr[0] as CstNode);
+    if (ctx.docAttr) event.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) event.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     // Capture inline flows
     this.captureInlineFlows(event.id!, ctx);
@@ -346,6 +354,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.assigneeAttr) task.assignee = this.visit(ctx.assigneeAttr[0] as CstNode);
     if (ctx.candidateGroupsAttr) task.candidateGroups = this.visit(ctx.candidateGroupsAttr[0] as CstNode);
     if (ctx.candidateUsersAttr) task.candidateUsers = this.visit(ctx.candidateUsersAttr[0] as CstNode);
+    if (ctx.docAttr) task.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) task.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     if (ctx.boundaryEvent) {
       task.boundaryEvents = (ctx.boundaryEvent as CstNode[]).map((n) => this.visit(n));
@@ -392,6 +402,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
 
     if (ctx.nameAttr) subprocess.name = this.visit(ctx.nameAttr[0] as CstNode);
     if (ctx.triggeredAttr) subprocess.triggered = this.visit(ctx.triggeredAttr[0] as CstNode);
+    if (ctx.docAttr) subprocess.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) subprocess.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     if (ctx.flowElement) {
       subprocess.elements = (ctx.flowElement as CstNode[]).map((n) => this.visit(n));
@@ -416,6 +428,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
 
     if (ctx.nameAttr) call.name = this.visit(ctx.nameAttr[0] as CstNode);
     if (ctx.calledElementAttr) call.calledElement = this.visit(ctx.calledElementAttr[0] as CstNode);
+    if (ctx.docAttr) call.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) call.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     // Capture inline flows
     this.captureInlineFlows(call.id!, ctx);
@@ -433,6 +447,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.nameAttr) gateway.name = this.visit(ctx.nameAttr[0] as CstNode);
     if (ctx.typeAttr) gateway.gatewayType = this.visit(ctx.typeAttr[0] as CstNode) as GatewayType;
     if (ctx.defaultAttr) gateway.default = this.visit(ctx.defaultAttr[0] as CstNode);
+    if (ctx.docAttr) gateway.doc = this.visit(ctx.docAttr[0] as CstNode);
+    if (ctx.serviceAttr) gateway.service = this.visit(ctx.serviceAttr[0] as CstNode);
 
     // Capture inline flows
     this.captureInlineFlows(gateway.id!, ctx);
@@ -701,6 +717,14 @@ export class BpmnMdVisitor extends BaseCstVisitor {
 
   elementsAttr(ctx: CstChildren): string[] {
     return this.visit(ctx.array![0] as CstNode);
+  }
+
+  docAttr(ctx: CstChildren): string {
+    return this.visit(ctx.stringValue![0] as CstNode);
+  }
+
+  serviceAttr(ctx: CstChildren): string {
+    return this.visit(ctx.stringValue![0] as CstNode);
   }
 
   // Value visitors

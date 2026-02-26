@@ -42,6 +42,7 @@ process: my-process
 ## Identifiers
 
 Element IDs follow these rules:
+
 - Start with a letter or underscore
 - Contain letters, numbers, underscores, hyphens
 - Must be unique within the document
@@ -58,12 +59,14 @@ task: 123-invalid        # Invalid - starts with number
 String values can be:
 
 **Unquoted** (single word):
+
 ```yaml
 task: my-task
   type: user
 ```
 
 **Quoted** (multiple words or special characters):
+
 ```yaml
 task: my-task
   name: "Validate Customer Order"
@@ -106,9 +109,12 @@ task: send-email
 ```
 
 Common attributes:
+
 - `name:` - Display name
 - `type:` - Element subtype (e.g., task type, gateway type)
 - `trigger:` - Event trigger type
+- `doc:` - Documentation anchor (service catalog integration)
+- `service:` - Service catalog identifier
 
 ## Nested Elements
 

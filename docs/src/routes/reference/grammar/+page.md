@@ -60,16 +60,16 @@ flowElement     = startEvent | intermediateEvent | endEvent
 
 ```text
 startEvent      = "start:" IDENTIFIER NEWLINE INDENT startBody DEDENT ;
-startBody       = { nameAttr | triggerAttr | eventAttr | inlineFlow } ;
+startBody       = { nameAttr | triggerAttr | eventAttr | docAttr | serviceAttr | inlineFlow } ;
 
 intermediateEvent = "event:" IDENTIFIER NEWLINE INDENT eventBody DEDENT ;
-eventBody       = { nameAttr | typeAttr | triggerAttr | eventAttr | inlineFlow } ;
+eventBody       = { nameAttr | typeAttr | triggerAttr | eventAttr | docAttr | serviceAttr | inlineFlow } ;
 
 endEvent        = "end:" IDENTIFIER NEWLINE INDENT endBody DEDENT ;
-endBody         = { nameAttr | triggerAttr | eventAttr } ;
+endBody         = { nameAttr | triggerAttr | eventAttr | docAttr | serviceAttr } ;
 
 boundaryEvent   = "boundary:" IDENTIFIER NEWLINE INDENT boundaryBody DEDENT ;
-boundaryBody    = { nameAttr | typeAttr | triggerAttr | interruptingAttr | eventAttr | inlineFlow } ;
+boundaryBody    = { nameAttr | typeAttr | triggerAttr | interruptingAttr | eventAttr | docAttr | serviceAttr | inlineFlow } ;
 
 eventAttr       = messageAttr | timerAttr | durationAttr | signalAttr
                 | conditionAttr | errorAttr | escalationAttr | linkAttr ;
@@ -79,7 +79,7 @@ eventAttr       = messageAttr | timerAttr | durationAttr | signalAttr
 
 ```text
 taskDecl        = "task:" IDENTIFIER NEWLINE INDENT taskBody DEDENT ;
-taskBody        = { nameAttr | typeAttr | taskAttr | boundaryEvent | inlineFlow | dataAssoc } ;
+taskBody        = { nameAttr | typeAttr | taskAttr | docAttr | serviceAttr | boundaryEvent | inlineFlow | dataAssoc } ;
 
 taskAttr        = documentationAttr | implementationAttr | classAttr
                 | scriptAttr | scriptFormatAttr
@@ -90,17 +90,17 @@ taskAttr        = documentationAttr | implementationAttr | classAttr
 
 ```text
 subprocessDecl  = "subprocess:" IDENTIFIER NEWLINE INDENT subprocessBody DEDENT ;
-subprocessBody  = { nameAttr | triggeredAttr | flowElement | flowDecl | boundaryEvent } ;
+subprocessBody  = { nameAttr | triggeredAttr | docAttr | serviceAttr | flowElement | flowDecl | boundaryEvent } ;
 
 callActivity    = "call:" IDENTIFIER NEWLINE INDENT callBody DEDENT ;
-callBody        = { nameAttr | calledElementAttr | boundaryEvent | inlineFlow } ;
+callBody        = { nameAttr | calledElementAttr | docAttr | serviceAttr | boundaryEvent | inlineFlow } ;
 ```
 
 ### Gateways
 
 ```text
 gatewayDecl     = "gateway:" IDENTIFIER NEWLINE INDENT gatewayBody DEDENT ;
-gatewayBody     = { nameAttr | typeAttr | defaultAttr | inlineFlow } ;
+gatewayBody     = { nameAttr | typeAttr | defaultAttr | docAttr | serviceAttr | inlineFlow } ;
 ```
 
 ### Data Elements
@@ -201,6 +201,8 @@ xAttr           = "x:" NUMBER NEWLINE ;
 yAttr           = "y:" NUMBER NEWLINE ;
 widthAttr       = "width:" NUMBER NEWLINE ;
 heightAttr      = "height:" NUMBER NEWLINE ;
+docAttr         = "doc:" stringValue NEWLINE ;
+serviceAttr     = "service:" stringValue NEWLINE ;
 ```
 
 ### Values

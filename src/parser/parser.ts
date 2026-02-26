@@ -165,6 +165,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.timerAttr) },
           { ALT: () => this.SUBRULE(this.signalAttr) },
           { ALT: () => this.SUBRULE(this.conditionAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
@@ -196,6 +198,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.errorAttr) },
           { ALT: () => this.SUBRULE(this.escalationAttr) },
           { ALT: () => this.SUBRULE(this.conditionAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
@@ -223,6 +227,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.signalAttr) },
           { ALT: () => this.SUBRULE(this.errorAttr) },
           { ALT: () => this.SUBRULE(this.escalationAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
       },
@@ -254,6 +260,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.escalationAttr) },
           { ALT: () => this.SUBRULE(this.conditionAttr) },
           { ALT: () => this.SUBRULE(this.interruptingAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
@@ -285,6 +293,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.assigneeAttr) },
           { ALT: () => this.SUBRULE(this.candidateGroupsAttr) },
           { ALT: () => this.SUBRULE(this.candidateUsersAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.boundaryEvent) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.SUBRULE(this.dataAssociation) },
@@ -310,6 +320,8 @@ export class BpmnMdParser extends CstParser {
         this.OR([
           { ALT: () => this.SUBRULE(this.nameAttr) },
           { ALT: () => this.SUBRULE(this.triggeredAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.flowElement) },
           { ALT: () => this.SUBRULE(this.sequenceFlowDecl) },
           { ALT: () => this.SUBRULE(this.boundaryEvent) },
@@ -336,6 +348,8 @@ export class BpmnMdParser extends CstParser {
         this.OR([
           { ALT: () => this.SUBRULE(this.nameAttr) },
           { ALT: () => this.SUBRULE(this.calledElementAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
@@ -361,6 +375,8 @@ export class BpmnMdParser extends CstParser {
           { ALT: () => this.SUBRULE(this.nameAttr) },
           { ALT: () => this.SUBRULE(this.typeAttr) },
           { ALT: () => this.SUBRULE(this.defaultAttr) },
+          { ALT: () => this.SUBRULE(this.docAttr) },
+          { ALT: () => this.SUBRULE(this.serviceAttr) },
           { ALT: () => this.SUBRULE(this.inlineFlow) },
           { ALT: () => this.CONSUME1(T.Newline) },
         ]);
@@ -796,6 +812,18 @@ export class BpmnMdParser extends CstParser {
   private elementsAttr = this.RULE('elementsAttr', () => {
     this.CONSUME(T.Elements);
     this.SUBRULE(this.array);
+    this.CONSUME(T.Newline);
+  });
+
+  private docAttr = this.RULE('docAttr', () => {
+    this.CONSUME(T.Doc);
+    this.SUBRULE(this.stringValue);
+    this.CONSUME(T.Newline);
+  });
+
+  private serviceAttr = this.RULE('serviceAttr', () => {
+    this.CONSUME(T.Service);
+    this.SUBRULE(this.stringValue);
     this.CONSUME(T.Newline);
   });
 

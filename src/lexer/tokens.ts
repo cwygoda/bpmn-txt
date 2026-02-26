@@ -284,6 +284,16 @@ export const Height = createToken({
   pattern: /height:/,
 });
 
+export const Doc = createToken({
+  name: 'Doc',
+  pattern: /doc:/,
+});
+
+export const Service = createToken({
+  name: 'Service',
+  pattern: /service:/,
+});
+
 // === Operators ===
 
 export const Arrow = createToken({
@@ -443,6 +453,8 @@ export const allTokens = [
   Y,
   Width,
   Height,
+  Doc,
+  Service,
 
   // Operators
   Arrow,
