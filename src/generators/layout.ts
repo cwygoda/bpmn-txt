@@ -9,7 +9,7 @@ import type {
   Waypoint,
 } from '../ast/types.js';
 import { ELEMENT_SIZES } from './constants.js';
-import { collectFromProcess, collectPoolsAndLanes } from './utils.js';
+import { collectFromProcess, collectFromPool, collectPoolsAndLanes } from './utils.js';
 
 // elkjs ESM default export requires type coercion
 const elk: ELK = new (ELKConstructor as unknown as { new (): ELK })();
@@ -64,7 +64,57 @@ export async function generateLayout(
   return result;
 }
 
+const POOL_GAP = 80;
+const CONTAINER_PADDING = 50;
+
 async function layoutProcess(
+  process: Process,
+  options: LayoutOptions
+): Promise<LayoutResult> {
+  const hasPools = process.pools && process.pools.length > 0;
+
+  if (!hasPools) {
+    return layoutFlat(process, options);
+  }
+
+  // Per-pool layout with vertical stacking
+  const result: LayoutResult = { elements: new Map(), edges: new Map() };
+  let yOffset = 0;
+
+  for (const pool of process.pools!) {
+    const poolElements = collectFromPool(pool);
+    if (poolElements.elements.length === 0) continue;
+
+    const poolResult = await layoutElements(
+      poolElements.elements,
+      poolElements.flows,
+      options
+    );
+    mergeWithOffset(poolResult, result, yOffset);
+
+    // Participant bounds extend 2*PADDING above and below elements.
+    // Offset must clear both this pool's bottom padding and the next pool's top padding.
+    const bounds = computeBoundsForElements(poolElements.elements, result);
+    if (bounds) {
+      yOffset = bounds.maxY + CONTAINER_PADDING * 4 + POOL_GAP;
+    }
+  }
+
+  // Direct (non-pool) elements
+  if (process.elements && process.elements.length > 0) {
+    const directResult = await layoutElements(
+      process.elements,
+      process.sequenceFlows ?? [],
+      options
+    );
+    mergeWithOffset(directResult, result, yOffset);
+  }
+
+  computeContainerBounds(process, result);
+  return result;
+}
+
+async function layoutFlat(
   process: Process,
   options: LayoutOptions
 ): Promise<LayoutResult> {
@@ -74,19 +124,49 @@ async function layoutProcess(
     return { elements: new Map(), edges: new Map() };
   }
 
-  // Build ELK graph
   const graph = buildElkGraph(elements, flows, options);
-
-  // Run layout
   const layoutedGraph = await elk.layout(graph);
-
-  // Extract element and edge layouts
   const result = extractLayout(layoutedGraph);
 
-  // Compute pool/lane bounds based on contained elements
   computeContainerBounds(process, result);
-
   return result;
+}
+
+async function layoutElements(
+  elements: FlowNode[],
+  flows: SequenceFlow[],
+  options: LayoutOptions
+): Promise<LayoutResult> {
+  const graph = buildElkGraph(elements, flows, options);
+  const layoutedGraph = await elk.layout(graph);
+  return extractLayout(layoutedGraph);
+}
+
+/**
+ * Merge a pool's layout into the combined result, offsetting by yOffset.
+ * Returns the new yOffset for the next pool.
+ */
+function mergeWithOffset(
+  source: LayoutResult,
+  target: LayoutResult,
+  yOffset: number
+): number {
+  let maxY = 0;
+
+  for (const [id, layout] of source.elements) {
+    layout.y = (layout.y ?? 0) + yOffset;
+    maxY = Math.max(maxY, layout.y + (layout.height ?? 0));
+    target.elements.set(id, layout);
+  }
+
+  for (const [id, edge] of source.edges) {
+    for (const wp of edge.waypoints) {
+      wp.y += yOffset;
+    }
+    target.edges.set(id, edge);
+  }
+
+  return maxY + POOL_GAP;
 }
 
 function buildElkGraph(
@@ -202,7 +282,7 @@ function extractLayout(graph: ElkNode): LayoutResult {
  */
 function computeContainerBounds(process: Process, result: LayoutResult): void {
   const { pools, lanes } = collectPoolsAndLanes(process);
-  const PADDING = 50;
+  const PADDING = CONTAINER_PADDING;
 
   // Compute lane bounds
   for (const lane of lanes) {
