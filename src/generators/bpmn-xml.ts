@@ -21,7 +21,7 @@ import type {
 import { generateIds } from './id-generator.js';
 import { generateLayout, applyLayout, type LayoutResult, type LayoutOptions } from './layout.js';
 import { ELEMENT_SIZES } from './constants.js';
-import { collectFromProcess, collectPoolsAndLanes } from './utils.js';
+import { collectFromProcess, collectFromPool, collectPoolsAndLanes } from './utils.js';
 
 const BPMN_NS = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
 const BPMNDI_NS = 'http://www.omg.org/spec/BPMN/20100524/DI';
@@ -151,12 +151,23 @@ function buildDefinitions(doc: Document, includeDiagram: boolean, layout: Layout
   }
 
   // Build processes
-  for (const proc of doc.processes) {
-    const bpmnProcess = buildProcess(proc);
-    if (!content['bpmn:process']) {
-      content['bpmn:process'] = [];
+  if (hasCollaboration) {
+    // Each pool becomes its own <bpmn:process>
+    content['bpmn:process'] = [];
+    for (const proc of doc.processes) {
+      if (proc.pools) {
+        for (const pool of proc.pools) {
+          (content['bpmn:process'] as unknown[]).push(buildPoolProcess(proc, pool));
+        }
+      }
     }
-    (content['bpmn:process'] as unknown[]).push(bpmnProcess);
+  } else {
+    for (const proc of doc.processes) {
+      if (!content['bpmn:process']) {
+        content['bpmn:process'] = [];
+      }
+      (content['bpmn:process'] as unknown[]).push(buildProcess(proc));
+    }
   }
 
   // Build diagram if requested
@@ -181,7 +192,7 @@ function buildCollaboration(doc: Document): Record<string, unknown> {
         participants.push({
           '@_id': `Participant_${pool.id}`,
           '@_name': pool.name || pool.id,
-          '@_processRef': proc.id,
+          '@_processRef': `${proc.id}_${pool.id}`,
         });
       }
     }
@@ -303,6 +314,36 @@ function buildProcess(proc: Process): Record<string, unknown> {
         '@_categoryValueRef': `CategoryValue_${group.id}`,
       });
     }
+  }
+
+  return process;
+}
+
+function buildPoolProcess(proc: Process, pool: Pool): Record<string, unknown> {
+  const process: Record<string, unknown> = {
+    '@_id': `${proc.id}_${pool.id}`,
+    '@_isExecutable': String(proc.executable ?? true),
+  };
+
+  if (pool.name) {
+    process['@_name'] = pool.name;
+  }
+
+  if (pool.lanes && pool.lanes.length > 0) {
+    process['bpmn:laneSet'] = buildLaneSet(pool);
+  }
+
+  const { elements, flows } = collectFromPool(pool);
+
+  for (const elem of elements) {
+    addFlowElement(process, elem);
+  }
+
+  for (const flow of flows) {
+    if (!process['bpmn:sequenceFlow']) {
+      process['bpmn:sequenceFlow'] = [];
+    }
+    (process['bpmn:sequenceFlow'] as unknown[]).push(buildSequenceFlow(flow));
   }
 
   return process;

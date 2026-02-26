@@ -236,8 +236,38 @@ describe('BPMN XML Exporter', () => {
 
     expect(xml).toContain('bpmn:collaboration');
     expect(xml).toContain('bpmn:participant');
+    expect(xml).toContain('processRef="test_p1"');
+    expect(xml).toContain('id="test_p1"');
     expect(xml).toContain('bpmn:laneSet');
     expect(xml).toContain('bpmn:lane');
+  });
+
+  it('emits one process per pool with correct elements', () => {
+    const input = `process: test
+  pool: p1
+    name: "Pool A"
+    task: t1
+      name: "Task A"
+  pool: p2
+    name: "Pool B"
+    task: t2
+      name: "Task B"
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+
+    // Two separate participants referencing distinct processes
+    expect(xml).toContain('processRef="test_p1"');
+    expect(xml).toContain('processRef="test_p2"');
+
+    // Two separate process elements
+    expect(xml).toContain('id="test_p1"');
+    expect(xml).toContain('id="test_p2"');
+
+    // Elements scoped to their process (t1 in p1, t2 in p2)
+    // The XML should NOT have a single process with both tasks
+    const processCount = (xml.match(/bpmn:process /g) || []).length;
+    expect(processCount).toBe(2);
   });
 
   it('exports boundary event', () => {
@@ -415,6 +445,41 @@ describe('Layout Generator', () => {
 
     // In RIGHT direction, t1 should be to the right of s1
     expect(t1Right.x!).toBeGreaterThan(s1Right.x!);
+  });
+
+  it('stacks multiple pools vertically without overlap', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Pool 1"
+    task: t1
+      name: "Task 1"
+    task: t2
+      name: "Task 2"
+    flow: f1
+      from: t1
+      to: t2
+  pool: p2
+    name: "Pool 2"
+    task: t3
+      name: "Task 3"
+    task: t4
+      name: "Task 4"
+    flow: f2
+      from: t3
+      to: t4
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const p1 = layout.elements.get('Participant_p1')!;
+    const p2 = layout.elements.get('Participant_p2')!;
+
+    expect(p1).toBeDefined();
+    expect(p2).toBeDefined();
+
+    // Pool 2 must start at or below Pool 1's bottom edge
+    expect(p2.y!).toBeGreaterThanOrEqual(p1.y! + p1.height!);
   });
 
   it('computes pool bounds from contained elements', async () => {
