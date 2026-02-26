@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/cwygoda/bpmn-txt/compare/v0.4.0...v0.5.0) (2026-02-26)
+
+
+### Features
+
+* add doc and service attributes for service catalog integration ([f824ce6](https://github.com/cwygoda/bpmn-txt/commit/f824ce6a83310c31690c465d4a4f55d9077d2f31))
+
 # [0.4.0](https://github.com/cwygoda/bpmn-txt/compare/v0.3.0...v0.4.0) (2026-02-24)
 
 
