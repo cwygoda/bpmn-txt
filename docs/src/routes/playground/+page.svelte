@@ -12,6 +12,8 @@
   let xmlOutput = $state('');
   let isDarkMode = $state(false);
 
+  const STORAGE_KEY = 'bpmn-txt-playground-code';
+
   const defaultCode = `process: hello-world
   name: "Hello World"
 
@@ -64,12 +66,20 @@
     // Expose for testing
     (window as any).__bpmnTxt = { parse, validate };
 
+    // Hoisted so updateListener can reference it
+    let compileDebounced: () => void = () => {};
+
+    // Load saved code from localStorage
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const initialCode = saved ?? defaultCode;
+
     // Build extensions based on theme
     const baseExtensions = [
       basicSetup,
       yaml(),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          localStorage.setItem(STORAGE_KEY, update.state.doc.toString());
           compileDebounced();
         }
       }),
@@ -85,7 +95,7 @@
 
     // Initialize CodeMirror
     const startState = EditorState.create({
-      doc: defaultCode,
+      doc: initialCode,
       extensions
     });
 
@@ -99,9 +109,9 @@
       container: viewerContainer
     });
 
-    // Store compile function for debouncing
+    // Assign debounced compile
     let compileTimeout: number;
-    const compileDebounced = () => {
+    compileDebounced = () => {
       clearTimeout(compileTimeout);
       compileTimeout = setTimeout(() => compile(parse, validate, toBpmnXmlAsync), 300);
     };
@@ -184,6 +194,13 @@
   function copyXml() {
     navigator.clipboard.writeText(xmlOutput);
   }
+
+  function resetCode() {
+    localStorage.removeItem(STORAGE_KEY);
+    editorView?.dispatch({
+      changes: { from: 0, to: editorView.state.doc.length, insert: defaultCode }
+    });
+  }
 </script>
 
 <svelte:head>
@@ -201,6 +218,9 @@
       {:else}
         <span class="status success">Ready</span>
       {/if}
+      <button class="secondary" onclick={resetCode}>
+        Reset
+      </button>
       <button onclick={copyXml} disabled={!xmlOutput || errors.some(e => e.type === 'error')}>
         Copy BPMN XML
       </button>
@@ -316,6 +336,17 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  button.secondary {
+    background: transparent;
+    color: var(--c-text);
+    border: 1px solid var(--c-border);
+  }
+
+  button.secondary:hover {
+    background: var(--c-bg-soft);
+    opacity: 1;
   }
 
   .panels {
