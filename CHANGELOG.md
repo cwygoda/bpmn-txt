@@ -1,3 +1,16 @@
+# [0.6.0](https://github.com/cwygoda/bpmn-txt/compare/v0.5.0...v0.6.0) (2026-02-26)
+
+
+### Bug Fixes
+
+* emit separate bpmn:process per pool for valid multi-pool XML ([23ee1e9](https://github.com/cwygoda/bpmn-txt/commit/23ee1e919e71e23aadf5d33f44d44e18e055ac8f))
+* per-pool ELK layout with vertical stacking ([624c32f](https://github.com/cwygoda/bpmn-txt/commit/624c32f931165a519df8e7bcda14c48004df3096))
+
+
+### Features
+
+* **playground:** persist editor content in localStorage ([153c1f1](https://github.com/cwygoda/bpmn-txt/commit/153c1f176183a67f32402a30ab82662147ac7b42))
+
 # [0.5.0](https://github.com/cwygoda/bpmn-txt/compare/v0.4.0...v0.5.0) (2026-02-26)
 
 
