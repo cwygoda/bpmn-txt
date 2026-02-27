@@ -1,3 +1,10 @@
+## [0.8.1](https://github.com/cwygoda/bpmn-txt/compare/v0.8.0...v0.8.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* **release:** enable provenance for npm OIDC trusted publishing ([90809bf](https://github.com/cwygoda/bpmn-txt/commit/90809bf3584601594eba0d163620754d29458510))
+
 # [0.8.0](https://github.com/cwygoda/bpmn-txt/compare/v0.7.0...v0.8.0) (2026-02-27)
 
 
