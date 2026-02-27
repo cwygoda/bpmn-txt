@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/cwygoda/bpmn-txt/compare/v0.6.0...v0.7.0) (2026-02-27)
+
+
+### Features
+
+* rename to @cwygoda/bpmn-txt and enable npm publishing ([d592369](https://github.com/cwygoda/bpmn-txt/commit/d59236942ba9dbb0499ba44701d4ebc50f145d00))
+
 # [0.6.0](https://github.com/cwygoda/bpmn-txt/compare/v0.5.0...v0.6.0) (2026-02-26)
 
 
