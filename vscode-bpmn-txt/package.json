@@ -35,6 +35,14 @@
         "language": "bpmn-txt",
         "scopeName": "source.bpmn-txt",
         "path": "./syntaxes/bpmn-txt.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.bpmn-txt.codeblock",
+        "path": "./syntaxes/bpmn-txt-markdown-injection.json",
+        "injectTo": ["text.html.markdown"],
+        "embeddedLanguages": {
+          "meta.embedded.block.bpmn-txt": "bpmn-txt"
+        }
       }
     ],
     "commands": [
