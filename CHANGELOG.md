@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/cwygoda/bpmn-txt/compare/v0.7.0...v0.8.0) (2026-02-27)
+
+
+### Features
+
+* switch to npm trusted publishing (OIDC) ([9fdd596](https://github.com/cwygoda/bpmn-txt/commit/9fdd596d53df6e12f98f99cbf16bb3971c5a663e))
+
 # [0.7.0](https://github.com/cwygoda/bpmn-txt/compare/v0.6.0...v0.7.0) (2026-02-27)
 
 
