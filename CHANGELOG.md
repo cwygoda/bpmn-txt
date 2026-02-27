@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/cwygoda/bpmn-txt/compare/v0.8.3...v0.9.0) (2026-02-27)
+
+
+### Features
+
+* **vscode:** syntax highlighting in markdown fenced code blocks ([8c85ef3](https://github.com/cwygoda/bpmn-txt/commit/8c85ef3412f088bf07405444f90d2ff655e965a3))
+
 ## [0.8.3](https://github.com/cwygoda/bpmn-txt/compare/v0.8.2...v0.8.3) (2026-02-27)
 
 
