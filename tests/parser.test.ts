@@ -511,6 +511,15 @@ describe('Parser', () => {
     expect(document!.processes[0].documentation).toBe('Line at base indent.\n  Indented line.\nBack to base.');
   });
 
+  it('parses input without trailing newline', () => {
+    const input = `process: test`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+    expect(document).not.toBeNull();
+    expect(document!.processes).toHaveLength(1);
+    expect(document!.processes[0].id).toBe('test');
+  });
+
   it('handles multiline content without trailing newline', () => {
     // Note: no newline at end of string
     const input = `process: test

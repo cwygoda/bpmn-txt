@@ -23,8 +23,11 @@ export interface ParseResult {
 export function parse(input: string): ParseResult {
   const errors: ParseError[] = [];
 
+  // Ensure trailing newline so the parser doesn't require it in source files
+  const normalized = input.endsWith('\n') ? input : input + '\n';
+
   // Lexing
-  const lexResult = lex(input);
+  const lexResult = lex(normalized);
   if (lexResult.errors.length > 0) {
     for (const err of lexResult.errors) {
       errors.push({
