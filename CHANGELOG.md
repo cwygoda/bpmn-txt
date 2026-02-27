@@ -1,3 +1,10 @@
+## [0.8.3](https://github.com/cwygoda/bpmn-txt/compare/v0.8.2...v0.8.3) (2026-02-27)
+
+
+### Bug Fixes
+
+* accept input without trailing newline ([332ef0d](https://github.com/cwygoda/bpmn-txt/commit/332ef0dde354efff08ac1c17c95600e5281458a5))
+
 ## [0.8.2](https://github.com/cwygoda/bpmn-txt/compare/v0.8.1...v0.8.2) (2026-02-27)
 
 

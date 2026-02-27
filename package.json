@@ -1,6 +1,6 @@
 {
   "name": "@cwygoda/bpmn-txt",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Text DSL for BPMN 2.0 - human-readable process definitions",
   "type": "module",
   "main": "dist/index.js",
