@@ -46,6 +46,13 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Package VS Code extension
+        run: |
+          cd vscode-bpmn-txt
+          pnpm install --frozen-lockfile
+          pnpm build --production
+          pnpm exec vsce package --no-dependencies
+
       - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

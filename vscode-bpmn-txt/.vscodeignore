@@ -1,0 +1,7 @@
+.gitignore
+src/**
+node_modules/**
+pnpm-lock.yaml
+esbuild.mjs
+tsconfig.json
+**/*.ts
