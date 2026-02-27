@@ -76,11 +76,13 @@ export interface InlineFlowInfo {
   to: string;
   condition?: string;
   name?: string;
+  poolId?: string;
 }
 
 export class BpmnMdVisitor extends BaseCstVisitor {
   // Track current element for inline flow resolution
   private currentElementId: string | undefined;
+  private currentPoolId: string | undefined;
   private collectedFlows: InlineFlowInfo[] = [];
 
   constructor() {
@@ -96,6 +98,7 @@ export class BpmnMdVisitor extends BaseCstVisitor {
   /** Reset state for new parse */
   reset(): void {
     this.currentElementId = undefined;
+    this.currentPoolId = undefined;
     this.collectedFlows = [];
   }
 
@@ -109,6 +112,7 @@ export class BpmnMdVisitor extends BaseCstVisitor {
           to,
           condition: attrs.condition as string | undefined,
           name: attrs.name as string | undefined,
+          poolId: this.currentPoolId,
         });
       }
     }
@@ -190,6 +194,9 @@ export class BpmnMdVisitor extends BaseCstVisitor {
       pool.name = this.visit(ctx.nameAttr[0] as CstNode);
     }
 
+    const prevPoolId = this.currentPoolId;
+    this.currentPoolId = pool.id;
+
     if (ctx.laneDecl) {
       pool.lanes = (ctx.laneDecl as CstNode[]).map((n) => this.visit(n));
     }
@@ -201,6 +208,8 @@ export class BpmnMdVisitor extends BaseCstVisitor {
     if (ctx.sequenceFlowDecl) {
       pool.sequenceFlows = (ctx.sequenceFlowDecl as CstNode[]).map((n) => this.visit(n));
     }
+
+    this.currentPoolId = prevPoolId;
 
     return pool;
   }

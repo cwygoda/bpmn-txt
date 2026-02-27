@@ -69,22 +69,50 @@ export function parse(input: string): ParseResult {
 }
 
 /**
- * Add collected inline flows to the document as SequenceFlow entries
+ * Add collected inline flows to the document as SequenceFlow entries.
+ * Flows tagged with a poolId are appended to the matching pool's sequenceFlows;
+ * flows without a poolId go to process.sequenceFlows.
  */
 function addInlineFlowsToDocument(doc: Document, flows: InlineFlowInfo[]): void {
-  // Convert InlineFlowInfo to SequenceFlow
-  const sequenceFlows: SequenceFlow[] = flows.map((flow, index) => ({
-    id: `flow_${flow.from}_${flow.to}_${index}`,
-    from: flow.from,
-    to: flow.to,
-    ...(flow.condition && { condition: flow.condition }),
-    ...(flow.name && { name: flow.name }),
-  }));
+  if (doc.processes.length === 0) return;
 
-  // Add flows to the first process (most common case)
-  // TODO: For multi-process documents, could infer correct process from element location
-  if (doc.processes.length > 0) {
-    const process = doc.processes[0];
-    process.sequenceFlows = [...(process.sequenceFlows ?? []), ...sequenceFlows];
+  const process = doc.processes[0];
+
+  // Group flows by poolId
+  const byPool = new Map<string | undefined, InlineFlowInfo[]>();
+  for (const flow of flows) {
+    const key = flow.poolId;
+    let group = byPool.get(key);
+    if (!group) {
+      group = [];
+      byPool.set(key, group);
+    }
+    group.push(flow);
+  }
+
+  // Build a pool lookup
+  const poolMap = new Map<string, Pool>();
+  if (process.pools) {
+    for (const pool of process.pools) {
+      if (pool.id) poolMap.set(pool.id, pool);
+    }
+  }
+
+  let globalIndex = 0;
+  for (const [poolId, group] of byPool) {
+    const seqFlows: SequenceFlow[] = group.map((flow) => ({
+      id: `flow_${flow.from}_${flow.to}_${globalIndex++}`,
+      from: flow.from,
+      to: flow.to,
+      ...(flow.condition && { condition: flow.condition }),
+      ...(flow.name && { name: flow.name }),
+    }));
+
+    if (poolId && poolMap.has(poolId)) {
+      const pool = poolMap.get(poolId)!;
+      pool.sequenceFlows = [...(pool.sequenceFlows ?? []), ...seqFlows];
+    } else {
+      process.sequenceFlows = [...(process.sequenceFlows ?? []), ...seqFlows];
+    }
   }
 }

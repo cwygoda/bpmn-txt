@@ -409,6 +409,46 @@ describe('Parser', () => {
     expect(flows.some(f => f.from === 'begin' && f.to === 'task-a')).toBe(true);
   });
 
+  it('adds inline flows to pool.sequenceFlows when inside a pool', () => {
+    const input = `process: collab
+  pool: customer
+    start: order
+      -> review
+    task: review
+      -> done
+    end: done
+
+  pool: warehouse
+    start: receive
+      -> ship
+    task: ship
+      -> finished
+    end: finished
+`;
+    const { document, errors } = parse(input);
+    expect(errors).toHaveLength(0);
+
+    const process = document!.processes[0];
+    // No process-level inline flows
+    const processFlows = process.sequenceFlows ?? [];
+    expect(processFlows).toHaveLength(0);
+
+    // Pool-level flows
+    const customerPool = process.pools!.find(p => p.id === 'customer')!;
+    expect(customerPool.sequenceFlows).toHaveLength(2);
+    expect(customerPool.sequenceFlows![0].from).toBe('order');
+    expect(customerPool.sequenceFlows![0].to).toBe('review');
+    expect(customerPool.sequenceFlows![1].from).toBe('review');
+    expect(customerPool.sequenceFlows![1].to).toBe('done');
+
+    const warehousePool = process.pools!.find(p => p.id === 'warehouse')!;
+    expect(warehousePool.sequenceFlows).toHaveLength(2);
+    expect(warehousePool.sequenceFlows![0].from).toBe('receive');
+    expect(warehousePool.sequenceFlows![0].to).toBe('ship');
+    expect(warehousePool.sequenceFlows![1].from).toBe('ship');
+    expect(warehousePool.sequenceFlows![1].to).toBe('finished');
+  });
+
   // Data association tests
   it('resolves input data association', () => {
     const input = `process: test
