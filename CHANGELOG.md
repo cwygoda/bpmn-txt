@@ -1,3 +1,10 @@
+## [0.9.1](https://github.com/cwygoda/bpmn-txt/compare/v0.9.0...v0.9.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* route inline flows to pool-level sequenceFlows ([b9080b7](https://github.com/cwygoda/bpmn-txt/commit/b9080b73ca3187665e4c8dfa1fa70e395d1c9018))
+
 # [0.9.0](https://github.com/cwygoda/bpmn-txt/compare/v0.8.3...v0.9.0) (2026-02-27)
 
 
