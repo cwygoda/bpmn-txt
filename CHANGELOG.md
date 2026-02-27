@@ -1,3 +1,10 @@
+## [0.8.2](https://github.com/cwygoda/bpmn-txt/compare/v0.8.1...v0.8.2) (2026-02-27)
+
+
+### Bug Fixes
+
+* **release:** upgrade npm and remove registry-url for OIDC auth ([ba1ddec](https://github.com/cwygoda/bpmn-txt/commit/ba1ddec8899c5bc54905b2d122a7541d2c06b734))
+
 ## [0.8.1](https://github.com/cwygoda/bpmn-txt/compare/v0.8.0...v0.8.1) (2026-02-27)
 
 
