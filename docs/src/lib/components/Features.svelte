@@ -26,7 +26,7 @@
 <section class="features">
   {#each features as feature}
     <div class="feature">
-      <div class="feature-icon">{feature.icon}</div>
+      <div class="feature-icon" aria-hidden="true">{feature.icon}</div>
       <h3 class="feature-title">{feature.title}</h3>
       <p class="feature-description">{feature.description}</p>
     </div>

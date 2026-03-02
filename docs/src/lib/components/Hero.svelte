@@ -13,8 +13,8 @@
   </p>
   <div class="hero-actions">
     <a href="{base}/guide/getting-started" class="btn btn-primary">Get Started</a>
-    <a href={siteConfig.github} class="btn btn-secondary" target="_blank" rel="noopener">
-      View on GitHub
+    <a href={siteConfig.github} class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+      View on GitHub<span class="sr-only"> (opens in new tab)</span>
     </a>
   </div>
 </section>
@@ -66,7 +66,7 @@
     font-weight: 600;
     font-size: 1rem;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
   }
 
   .btn-primary {

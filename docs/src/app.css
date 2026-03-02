@@ -34,6 +34,35 @@
   box-sizing: border-box;
 }
 
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 200;
+  padding: 0.75rem 1.5rem;
+  background: var(--c-brand);
+  color: white;
+  border-radius: 0 0 8px 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 html {
   font-family: var(--font-sans);
   font-size: 16px;
@@ -53,6 +82,15 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+}
+
+a:focus-visible {
+  border-radius: 2px;
 }
 
 code {
@@ -139,6 +177,12 @@ pre.shiki {
   background-color: var(--c-bg-soft) !important;
 }
 
+@media (prefers-color-scheme: dark) {
+  pre.shiki {
+    background-color: #0d1117 !important;
+  }
+}
+
 .shiki .line {
   display: block;
 }
@@ -166,7 +210,16 @@ pre.shiki {
 }
 
 @media (prefers-color-scheme: dark) {
-  .tip { background-color: #1e3a5f; }
-  .warning { background-color: #422006; }
-  .danger { background-color: #450a0a; }
+  .tip { background-color: #1e3a5f; color: #bfdbfe; }
+  .warning { background-color: #422006; color: #fde68a; }
+  .danger { background-color: #450a0a; color: #fecaca; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

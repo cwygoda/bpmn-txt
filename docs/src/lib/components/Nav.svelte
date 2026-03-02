@@ -13,22 +13,24 @@
       <span class="logo-txt">-TXT</span>
     </a>
 
-    <button class="menu-toggle" onclick={() => menuOpen = !menuOpen} aria-label="Toggle menu">
+    <button class="menu-toggle" onclick={() => menuOpen = !menuOpen} aria-label="Toggle menu" aria-expanded={menuOpen}>
       <span class="hamburger" class:open={menuOpen}></span>
     </button>
 
     <div class="nav-links" class:open={menuOpen}>
       {#each nav as item}
+        {@const isActive = page.url.pathname.startsWith(base + item.link)}
         <a
           href="{base}{item.link}"
           class="nav-link"
-          class:active={page.url.pathname.startsWith(base + item.link)}
+          class:active={isActive}
+          aria-current={isActive ? 'page' : undefined}
         >
           {item.text}
         </a>
       {/each}
-      <a href={siteConfig.github} class="nav-link github" target="_blank" rel="noopener">
-        GitHub
+      <a href={siteConfig.github} class="nav-link github" target="_blank" rel="noopener noreferrer">
+        GitHub<span class="sr-only"> (opens in new tab)</span>
       </a>
     </div>
   </div>
@@ -162,7 +164,7 @@
     }
 
     .nav-link {
-      padding: 0.5rem 1rem;
+      padding: 0.75rem 1rem;
       width: 100%;
     }
   }

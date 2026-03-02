@@ -211,13 +211,9 @@
   <div class="toolbar">
     <h1>Playground</h1>
     <div class="actions">
-      {#if isCompiling}
-        <span class="status compiling">Compiling...</span>
-      {:else if errors.some(e => e.type === 'error')}
-        <span class="status error">Error</span>
-      {:else}
-        <span class="status success">Ready</span>
-      {/if}
+      <span class="status" class:compiling={isCompiling} class:error={!isCompiling && errors.some(e => e.type === 'error')} class:success={!isCompiling && !errors.some(e => e.type === 'error')} role="status" aria-live="polite">
+        {#if isCompiling}Compiling...{:else if errors.some(e => e.type === 'error')}Error{:else}Ready{/if}
+      </span>
       <button class="secondary" onclick={resetCode}>
         Reset
       </button>
@@ -230,7 +226,7 @@
   <div class="panels">
     <div class="editor-panel">
       <div class="panel-header">BPMN-TXT Source</div>
-      <div class="editor" bind:this={editorContainer}></div>
+      <div class="editor" bind:this={editorContainer} role="textbox" aria-label="BPMN-TXT source code editor" aria-multiline="true"></div>
     </div>
 
     <div class="viewer-panel">

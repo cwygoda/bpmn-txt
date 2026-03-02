@@ -23,10 +23,14 @@
   {#if hasSidebar}
     <Sidebar items={sidebarItems} />
   {/if}
-  <main class="content" class:with-sidebar={hasSidebar}>
+  <main id="main-content" class="content" class:with-sidebar={hasSidebar}>
     {@render children()}
   </main>
 </div>
+
+<footer class="site-footer">
+  <p>&copy; {new Date().getFullYear()} BPMN-TXT</p>
+</footer>
 
 <style>
   .layout {
@@ -52,5 +56,13 @@
       max-width: 100%;
       padding: 2rem 1.5rem;
     }
+  }
+
+  :global(.site-footer) {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    color: var(--c-text-light);
+    font-size: 0.875rem;
+    border-top: 1px solid var(--c-border);
   }
 </style>

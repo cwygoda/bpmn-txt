@@ -17,11 +17,13 @@
       {#if group.items}
         <ul class="sidebar-items">
           {#each group.items as item}
+            {@const isActive = page.url.pathname === base + item.link}
             <li>
               <a
                 href="{base}{item.link}"
                 class="sidebar-link"
-                class:active={page.url.pathname === base + item.link}
+                class:active={isActive}
+                aria-current={isActive ? 'page' : undefined}
               >
                 {item.text}
               </a>
@@ -67,9 +69,11 @@
 
   .sidebar-link {
     display: block;
-    padding: 0.375rem 0;
+    padding: 0.5rem 0.5rem;
+    margin: 0 -0.5rem;
     color: var(--c-text-light);
     font-size: 0.9375rem;
+    border-radius: 4px;
     transition: color 0.2s;
   }
 

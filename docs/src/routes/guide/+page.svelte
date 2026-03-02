@@ -8,7 +8,7 @@
 
 <h2>Why BPMN-TXT?</h2>
 
-<h3>The Problem with BPMN XML</h3>
+<h2>The Problem with BPMN XML</h2>
 
 <p>BPMN 2.0 XML is verbose and hard to read:</p>
 
@@ -27,7 +27,7 @@
   &lt;bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1"/&gt;
 &lt;/bpmn:process&gt;</code></pre>
 
-<h3>The BPMN-TXT Solution</h3>
+<h2>The BPMN-TXT Solution</h2>
 
 <p>The same process in BPMN-TXT:</p>
 
