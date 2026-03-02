@@ -514,6 +514,93 @@ describe('Layout Generator', () => {
   });
 });
 
+describe('Message Flow Routing', () => {
+  it('generates orthogonal waypoints for cross-pool message flows', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Sender"
+    task: t1
+      name: "Send"
+  pool: p2
+    name: "Receiver"
+    task: t2
+      name: "Receive"
+  message-flow: m1
+    from: t1
+    to: t2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    // Message flow should have waypoints
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+    expect(edge!.waypoints.length).toBeGreaterThanOrEqual(2);
+
+    // All segments must be orthogonal (horizontal or vertical)
+    const wp = edge!.waypoints;
+    for (let i = 1; i < wp.length; i++) {
+      const dx = Math.abs(wp[i].x - wp[i - 1].x);
+      const dy = Math.abs(wp[i].y - wp[i - 1].y);
+      expect(dx < 1 || dy < 1).toBe(true);
+    }
+
+    // Start at source bottom edge, end at target top edge
+    const t1Layout = layout.elements.get('t1')!;
+    const t2Layout = layout.elements.get('t2')!;
+    expect(wp[0].y).toBe(t1Layout.y! + (t1Layout.height ?? 80));
+    expect(wp[wp.length - 1].y).toBe(t2Layout.y!);
+  });
+
+  it('distributes midY for multiple message flows to minimise crossings', async () => {
+    // Cross-wired flows + intra-pool sequence flows guarantee horizontal spread → Z-shapes
+    const input = `process: test
+  pool: p1
+    name: "Sender"
+    task: a1
+      name: "A1"
+    task: b1
+      name: "B1"
+    flow: f1
+      from: a1
+      to: b1
+  pool: p2
+    name: "Receiver"
+    task: a2
+      name: "A2"
+    task: b2
+      name: "B2"
+    flow: f2
+      from: a2
+      to: b2
+  message-flow: m1
+    from: a1
+    to: b2
+  message-flow: m2
+    from: b1
+    to: a2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const e1 = layout.edges.get('m1');
+    const e2 = layout.edges.get('m2');
+    expect(e1).toBeDefined();
+    expect(e2).toBeDefined();
+
+    // Cross-wired flows with horizontal spread must produce Z-shapes (4 waypoints)
+    expect(e1!.waypoints).toHaveLength(4);
+    expect(e2!.waypoints).toHaveLength(4);
+
+    // Their midY values must differ (distributed across the gap)
+    const mid1 = e1!.waypoints[1].y;
+    const mid2 = e2!.waypoints[1].y;
+    expect(mid1).not.toBe(mid2);
+  });
+});
+
 describe('Async BPMN XML Export with Layout', () => {
   it('generates XML with auto-layout', async () => {
     const input = `process: test
