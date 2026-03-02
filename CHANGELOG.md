@@ -1,3 +1,15 @@
+# [0.11.0](https://github.com/cwygoda/bpmn-txt/compare/v0.10.0...v0.11.0) (2026-03-02)
+
+
+### Bug Fixes
+
+* resolve bpmnlint JSDoc type incompatibility ([1fe8b94](https://github.com/cwygoda/bpmn-txt/commit/1fe8b947a1a204d321a34085bc06b681c0f4c3df))
+
+
+### Features
+
+* support extends in lint config ([223fac7](https://github.com/cwygoda/bpmn-txt/commit/223fac77ed7cabbab68e31b96a018d49aae2d03f))
+
 # [0.10.0](https://github.com/cwygoda/bpmn-txt/compare/v0.9.1...v0.10.0) (2026-03-02)
 
 
