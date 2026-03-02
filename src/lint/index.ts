@@ -67,7 +67,8 @@ export async function lint(
 
   const resolver = new NodeResolver();
   const linter = new Linter({
-    config,
+    // bpmnlint's JSDoc Config type requires non-optional rules; ours is wider
+    config: config as { rules: Record<string, string | number> },
     resolver,
   });
 
