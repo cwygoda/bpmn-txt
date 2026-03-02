@@ -1,3 +1,10 @@
+## [0.13.2](https://github.com/cwygoda/bpmn-txt/compare/v0.13.1...v0.13.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* stack lanes vertically within pools to prevent overlap ([037eb74](https://github.com/cwygoda/bpmn-txt/commit/037eb7439fb8e2cd0f87feabb13332ffc9831c27))
+
 ## [0.13.1](https://github.com/cwygoda/bpmn-txt/compare/v0.13.0...v0.13.1) (2026-03-02)
 
 
