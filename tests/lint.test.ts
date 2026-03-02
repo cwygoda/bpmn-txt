@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../src/parser/index.js';
 import { toBpmnXml } from '../src/generators/index.js';
-import { lint, defaultConfig, createConfig } from '../src/lint/index.js';
+import { lint, defaultConfig, recommendedConfig, createConfig } from '../src/lint/index.js';
 
 describe('bpmnlint integration', () => {
   it('lints BPMN XML and returns results', async () => {
@@ -66,7 +66,49 @@ describe('bpmnlint integration', () => {
       'no-disconnected': 'warn',
     });
 
-    expect(config.rules['label-required']).toBe('off');
-    expect(config.rules['no-disconnected']).toBe('warn');
+    expect(config.rules!['label-required']).toBe('off');
+    expect(config.rules!['no-disconnected']).toBe('warn');
+  });
+
+  it('lints with extends: bpmnlint:recommended', async () => {
+    const input = `process: test
+  start: s1
+    -> t1
+  task: t1
+    -> e1
+  end: e1
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+    const results = await lint(xml, recommendedConfig);
+
+    // recommended ruleset includes label-required, so unlabeled elements trigger warnings
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((r) => r.rule === 'label-required')).toBe(true);
+  });
+
+  it('extends + rules override works', async () => {
+    const input = `process: test
+  start: s1
+    -> t1
+  task: t1
+    -> e1
+  end: e1
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+
+    const results = await lint(xml, {
+      extends: 'bpmnlint:recommended',
+      rules: { 'label-required': 'off' },
+    });
+
+    // label-required should be suppressed
+    expect(results.every((r) => r.rule !== 'label-required')).toBe(true);
+  });
+
+  it('exports recommendedConfig', () => {
+    expect(recommendedConfig).toBeDefined();
+    expect(recommendedConfig.extends).toBe('bpmnlint:recommended');
   });
 });

@@ -7,8 +7,9 @@ interface LintReport {
   category: 'error' | 'warn' | 'off';
 }
 
-interface LinterConfig {
-  rules: Record<string, 'error' | 'warn' | 'off' | 0 | 1 | 2>;
+export interface LinterConfig {
+  extends?: string | string[];
+  rules?: Record<string, 'error' | 'warn' | 'off' | 0 | 1 | 2>;
 }
 
 interface ModdleElement {
@@ -23,6 +24,13 @@ export interface LintResult {
   category: 'error' | 'warn';
   rule: string;
 }
+
+/**
+ * Recommended config using bpmnlint's built-in recommended ruleset
+ */
+export const recommendedConfig: LinterConfig = {
+  extends: 'bpmnlint:recommended',
+};
 
 /**
  * Default linting configuration with recommended rules
@@ -67,17 +75,18 @@ export async function lint(
   const reports = await linter.lint(rootElement);
 
   // Transform reports to our result format
+  // bpmnlint returns { [ruleId]: Array<{ id: elementId, message, category }> }
   const results: LintResult[] = [];
 
-  for (const [elementId, elementReports] of Object.entries(reports)) {
-    for (const report of elementReports as LintReport[]) {
+  for (const [ruleId, ruleReports] of Object.entries(reports)) {
+    for (const report of ruleReports as LintReport[]) {
       if (report.category === 'off') continue;
 
       results.push({
-        id: elementId,
+        id: report.id,
         message: report.message,
         category: report.category as 'error' | 'warn',
-        rule: (report as { rule?: string }).rule || 'unknown',
+        rule: ruleId,
       });
     }
   }

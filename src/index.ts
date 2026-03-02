@@ -20,5 +20,5 @@ export type {
   LayoutResult,
   LayoutOptions,
 } from './generators/index.js';
-export { lint, defaultConfig, createConfig } from './lint/index.js';
-export type { LintResult } from './lint/index.js';
+export { lint, defaultConfig, recommendedConfig, createConfig } from './lint/index.js';
+export type { LintResult, LinterConfig } from './lint/index.js';
