@@ -316,6 +316,7 @@ function buildProcess(proc: Process): Record<string, unknown> {
     }
   }
 
+  addFlowReferences(process);
   return process;
 }
 
@@ -346,6 +347,7 @@ function buildPoolProcess(proc: Process, pool: Pool): Record<string, unknown> {
     (process['bpmn:sequenceFlow'] as unknown[]).push(buildSequenceFlow(flow));
   }
 
+  addFlowReferences(process);
   return process;
 }
 
@@ -681,6 +683,50 @@ function buildDataStore(data: DataStore): Record<string, unknown> {
   };
   if (data.name) result['@_name'] = data.name;
   return result;
+}
+
+/**
+ * All BPMN flow-node XML tags that may carry incoming/outgoing refs.
+ */
+const FLOW_NODE_TAGS = [
+  'bpmn:startEvent', 'bpmn:endEvent', 'bpmn:task', 'bpmn:userTask',
+  'bpmn:serviceTask', 'bpmn:scriptTask', 'bpmn:sendTask', 'bpmn:receiveTask',
+  'bpmn:manualTask', 'bpmn:businessRuleTask', 'bpmn:subProcess',
+  'bpmn:callActivity', 'bpmn:exclusiveGateway', 'bpmn:parallelGateway',
+  'bpmn:inclusiveGateway', 'bpmn:eventBasedGateway', 'bpmn:complexGateway',
+  'bpmn:intermediateCatchEvent', 'bpmn:intermediateThrowEvent',
+  'bpmn:boundaryEvent',
+];
+
+/**
+ * Post-process a built process record to inject bpmn:incoming / bpmn:outgoing
+ * child elements on every flow node. bpmn-moddle does NOT auto-populate these
+ * from sequenceFlow sourceRef/targetRef, so bpmnlint needs them explicitly.
+ */
+function addFlowReferences(process: Record<string, unknown>): void {
+  const flows = (process['bpmn:sequenceFlow'] ?? []) as Record<string, unknown>[];
+  const incoming = new Map<string, string[]>();
+  const outgoing = new Map<string, string[]>();
+
+  for (const flow of flows) {
+    const src = flow['@_sourceRef'] as string;
+    const tgt = flow['@_targetRef'] as string;
+    const fid = flow['@_id'] as string;
+    if (!outgoing.has(src)) outgoing.set(src, []);
+    outgoing.get(src)!.push(fid);
+    if (!incoming.has(tgt)) incoming.set(tgt, []);
+    incoming.get(tgt)!.push(fid);
+  }
+
+  for (const tag of FLOW_NODE_TAGS) {
+    const elements = process[tag];
+    if (!elements) continue;
+    for (const elem of (Array.isArray(elements) ? elements : [elements]) as Record<string, unknown>[]) {
+      const id = elem['@_id'] as string;
+      if (incoming.has(id)) elem['bpmn:incoming'] = incoming.get(id)!;
+      if (outgoing.has(id)) elem['bpmn:outgoing'] = outgoing.get(id)!;
+    }
+  }
 }
 
 function buildSequenceFlow(flow: SequenceFlow): Record<string, unknown> {

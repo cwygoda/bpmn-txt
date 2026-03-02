@@ -111,4 +111,49 @@ describe('bpmnlint integration', () => {
     expect(recommendedConfig).toBeDefined();
     expect(recommendedConfig.extends).toBe('bpmnlint:recommended');
   });
+
+  it('connected elements have no disconnected/implicit-start/implicit-end errors', async () => {
+    const input = `process: test
+  start: s1
+    name: "Start"
+    -> t1
+  task: t1
+    name: "Task"
+    -> e1
+  end: e1
+    name: "End"
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+    const results = await lint(xml, recommendedConfig);
+
+    const disconnected = results.filter((r) => r.rule === 'no-disconnected');
+    const implicitStart = results.filter((r) => r.rule === 'no-implicit-start');
+    const implicitEnd = results.filter((r) => r.rule === 'no-implicit-end');
+
+    expect(disconnected).toEqual([]);
+    expect(implicitStart).toEqual([]);
+    expect(implicitEnd).toEqual([]);
+  });
+
+  it('connected elements in pools have no disconnected errors', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Pool"
+    start: s1
+      name: "Start"
+      -> t1
+    task: t1
+      name: "Task"
+      -> e1
+    end: e1
+      name: "End"
+`;
+    const { document } = parse(input);
+    const xml = toBpmnXml(document!);
+    const results = await lint(xml, recommendedConfig);
+
+    const disconnected = results.filter((r) => r.rule === 'no-disconnected');
+    expect(disconnected).toEqual([]);
+  });
 });
