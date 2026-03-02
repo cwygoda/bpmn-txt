@@ -170,12 +170,36 @@ function buildDefinitions(doc: Document, includeDiagram: boolean, layout: Layout
     }
   }
 
+  // Collect and emit bpmn:message elements referenced by message flows
+  const messages = collectMessages(doc);
+  if (messages.length > 0) {
+    content['bpmn:message'] = messages;
+  }
+
   // Build diagram if requested
   if (includeDiagram) {
     content['bpmndi:BPMNDiagram'] = buildDiagram(doc, layout);
   }
 
   return definitions;
+}
+
+function collectMessages(doc: Document): Record<string, unknown>[] {
+  const seen = new Set<string>();
+  const messages: Record<string, unknown>[] = [];
+  for (const proc of doc.processes) {
+    if (!proc.messageFlows) continue;
+    for (const flow of proc.messageFlows) {
+      if (flow.message && !seen.has(flow.message)) {
+        seen.add(flow.message);
+        messages.push({
+          '@_id': `Message_${flow.message}`,
+          '@_name': flow.message,
+        });
+      }
+    }
+  }
+  return messages;
 }
 
 function buildCollaboration(doc: Document): Record<string, unknown> {
@@ -752,6 +776,7 @@ function buildMessageFlow(flow: MessageFlow): Record<string, unknown> {
     '@_targetRef': flow.to,
   };
   if (flow.name) result['@_name'] = flow.name;
+  if (flow.message) result['@_messageRef'] = `Message_${flow.message}`;
   return result;
 }
 
