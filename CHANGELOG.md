@@ -1,3 +1,11 @@
+## [0.13.3](https://github.com/cwygoda/bpmn-txt/compare/v0.13.2...v0.13.3) (2026-03-02)
+
+
+### Bug Fixes
+
+* re-route cross-lane sequence flows using final node positions ([1c38dcd](https://github.com/cwygoda/bpmn-txt/commit/1c38dcd8050fe8c30b7babb4f05585a5e22ee771))
+* resolve 404 on GitHub Pages reload for non-root routes ([03a21f2](https://github.com/cwygoda/bpmn-txt/commit/03a21f232a78be8edd3aafd3e756c79394bf0d44))
+
 ## [0.13.2](https://github.com/cwygoda/bpmn-txt/compare/v0.13.1...v0.13.2) (2026-03-02)
 
 
