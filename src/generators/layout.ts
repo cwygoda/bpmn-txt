@@ -4,6 +4,7 @@ import type {
   Document,
   Process,
   FlowNode,
+  Lane,
   SequenceFlow,
   MessageFlow,
   Layout,
@@ -298,6 +299,60 @@ function computeContainerBounds(process: Process, result: LayoutResult): void {
         width: bounds.maxX - bounds.minX + 2 * PADDING,
         height: bounds.maxY - bounds.minY + 2 * PADDING,
       });
+    }
+  }
+
+  // Stack lanes vertically within each pool (declaration order = top→bottom)
+  for (const pool of pools) {
+    if (!pool.id || !pool.lanes || pool.lanes.length < 2) continue;
+
+    // Collect lanes that have computed bounds
+    const laneLayouts: { lane: Lane; layout: Layout }[] = [];
+    for (const lane of pool.lanes) {
+      if (!lane.id) continue;
+      const layout = result.elements.get(lane.id);
+      if (layout && layout.x !== undefined && layout.y !== undefined) {
+        laneLayouts.push({ lane, layout });
+      }
+    }
+    if (laneLayouts.length < 2) continue;
+
+    // Uniform X and width across all lanes
+    const minX = Math.min(...laneLayouts.map(l => l.layout.x!));
+    const maxRight = Math.max(...laneLayouts.map(l => l.layout.x! + (l.layout.width ?? 0)));
+    const fullWidth = maxRight - minX;
+
+    // Stack in declaration order, anchored at topmost lane
+    let nextY = Math.min(...laneLayouts.map(l => l.layout.y!));
+    for (const { lane, layout: laneLayout } of laneLayouts) {
+      const deltaY = nextY - laneLayout.y!;
+      laneLayout.x = minX;
+      laneLayout.y = nextY;
+      laneLayout.width = fullWidth;
+
+      // Shift contained elements and edge waypoints
+      if (lane.elements) {
+        for (const elem of lane.elements) {
+          if (!elem.id) continue;
+          const elemLayout = result.elements.get(elem.id);
+          if (elemLayout && elemLayout.y !== undefined) {
+            elemLayout.y += deltaY;
+          }
+        }
+      }
+      if (lane.sequenceFlows) {
+        for (const flow of lane.sequenceFlows) {
+          if (!flow.id) continue;
+          const edge = result.edges.get(flow.id);
+          if (edge) {
+            for (const wp of edge.waypoints) {
+              wp.y += deltaY;
+            }
+          }
+        }
+      }
+
+      nextY += laneLayout.height ?? 0;
     }
   }
 

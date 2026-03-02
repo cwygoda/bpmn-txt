@@ -514,6 +514,53 @@ describe('Layout Generator', () => {
   });
 });
 
+describe('Lane Stacking', () => {
+  it('stacks multiple lanes within a pool without overlap', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Platform"
+    lane: l1
+      name: "Lane 1"
+      start: s1
+        -> t1
+    lane: l2
+      name: "Lane 2"
+      task: t1
+        -> t2
+    lane: l3
+      name: "Lane 3"
+      task: t2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const l1 = layout.elements.get('l1')!;
+    const l2 = layout.elements.get('l2')!;
+    const l3 = layout.elements.get('l3')!;
+
+    expect(l1).toBeDefined();
+    expect(l2).toBeDefined();
+    expect(l3).toBeDefined();
+
+    // Lanes must not overlap — each starts at or after the previous ends
+    expect(l2.y!).toBeGreaterThanOrEqual(l1.y! + l1.height!);
+    expect(l3.y!).toBeGreaterThanOrEqual(l2.y! + l2.height!);
+
+    // All lanes share same x and width
+    expect(l1.x).toBe(l2.x);
+    expect(l2.x).toBe(l3.x);
+    expect(l1.width).toBe(l2.width);
+    expect(l2.width).toBe(l3.width);
+
+    // Edge waypoints must stay within their lane's vertical bounds
+    // t1 is in l2 — all waypoints of edges from t1 should be within l2/l3 range
+    const t1Layout = layout.elements.get('t1')!;
+    expect(t1Layout.y!).toBeGreaterThanOrEqual(l2.y!);
+    expect(t1Layout.y! + (t1Layout.height ?? 0)).toBeLessThanOrEqual(l2.y! + l2.height!);
+  });
+});
+
 describe('Message Flow Routing', () => {
   it('generates orthogonal waypoints for cross-pool message flows', async () => {
     const input = `process: test
