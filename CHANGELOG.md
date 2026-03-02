@@ -1,3 +1,10 @@
+## [0.11.1](https://github.com/cwygoda/bpmn-txt/compare/v0.11.0...v0.11.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* emit bpmn:incoming/outgoing on flow nodes in XML output ([f169d1e](https://github.com/cwygoda/bpmn-txt/commit/f169d1efaf7caaade6e38c94cbe028ef8dd5b41c))
+
 # [0.11.0](https://github.com/cwygoda/bpmn-txt/compare/v0.10.0...v0.11.0) (2026-03-02)
 
 
