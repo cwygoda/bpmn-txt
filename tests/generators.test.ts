@@ -649,34 +649,4 @@ describe('Async BPMN XML Export with Layout', () => {
     expect(xml).toContain('bpmndi:BPMNShape');
   });
 
-  it('centers BPMNLabel on message flow edge when message is set', async () => {
-    const input = `process: test
-  pool: p1
-    name: "Sender"
-    task: t1
-      name: "Send"
-  pool: p2
-    name: "Receiver"
-    task: t2
-      name: "Receive"
-  message-flow: m1
-    from: t1
-    to: t2
-    message: OrderPlaced
-`;
-    const { document } = parse(input);
-    const xml = await toBpmnXmlAsync(document!);
-
-    // Should have a BPMNLabel inside the message flow edge
-    expect(xml).toContain('bpmndi:BPMNLabel');
-
-    // Label bounds should exist with centered position
-    const labelMatch = xml.match(/bpmnElement="m1"[\s\S]*?BPMNLabel[\s\S]*?Bounds[^/]*x="([^"]+)"[^/]*y="([^"]+)"[^/]*width="([^"]+)"/);
-    expect(labelMatch).not.toBeNull();
-    if (labelMatch) {
-      const width = parseFloat(labelMatch[3]);
-      // Width should roughly match label text length * char width
-      expect(width).toBeGreaterThan(0);
-    }
-  });
 });

@@ -864,7 +864,7 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
         if (!flow.id) continue;
         const flowLayout = layout.edges.get(flow.id);
         if (flowLayout) {
-          edges.push(buildEdge(flow.id, flowLayout.waypoints, flow.message));
+          edges.push(buildEdge(flow.id, flowLayout.waypoints));
         } else {
           edges.push({
             '@_id': `${flow.id}_di`,
@@ -913,8 +913,7 @@ function buildShape(
 
 function buildEdge(
   flowId: string,
-  waypoints: { x: number; y: number }[],
-  label?: string
+  waypoints: { x: number; y: number }[]
 ): Record<string, unknown> {
   const edge: Record<string, unknown> = {
     '@_id': `${flowId}_di`,
@@ -926,25 +925,6 @@ function buildEdge(
       '@_x': wp.x,
       '@_y': wp.y,
     }));
-
-    if (label) {
-      // Center label on the midpoint of the edge
-      const mid = Math.floor(waypoints.length / 2);
-      const p0 = waypoints[mid - 1];
-      const p1 = waypoints[mid];
-      const cx = (p0.x + p1.x) / 2;
-      const cy = (p0.y + p1.y) / 2;
-      const labelWidth = label.length * 7;
-      const labelHeight = 14;
-      edge['bpmndi:BPMNLabel'] = {
-        'dc:Bounds': {
-          '@_x': cx - labelWidth / 2,
-          '@_y': cy - labelHeight / 2,
-          '@_width': labelWidth,
-          '@_height': labelHeight,
-        },
-      };
-    }
   }
 
   return edge;
