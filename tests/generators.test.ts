@@ -561,6 +561,60 @@ describe('Lane Stacking', () => {
   });
 });
 
+describe('Cross-Lane Sequence Flow Routing', () => {
+  it('re-routes pool-level sequence flows using final node positions', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Platform"
+    lane: l1
+      name: "Requester"
+      start: s1
+        -> t1
+    lane: l2
+      name: "Approver"
+      task: t1
+        name: "Review"
+        -> t2
+    lane: l3
+      name: "Executor"
+      task: t2
+        name: "Execute"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    // Pool-level inline flows should have routed waypoints
+    const pool = document!.processes[0].pools![0];
+    for (const flow of pool.sequenceFlows ?? []) {
+      const edge = layout.edges.get(flow.id!);
+      expect(edge, `edge for ${flow.id} (${flow.from} -> ${flow.to})`).toBeDefined();
+
+      const wp = edge!.waypoints;
+      const srcLayout = layout.elements.get(flow.from)!;
+      const tgtLayout = layout.elements.get(flow.to)!;
+      const srcW = srcLayout.width ?? 100;
+      const srcH = srcLayout.height ?? 80;
+      const tgtH = tgtLayout.height ?? 80;
+
+      // Starts at source right edge center
+      expect(wp[0].x).toBe(srcLayout.x! + srcW);
+      expect(wp[0].y).toBe(srcLayout.y! + srcH / 2);
+
+      // Ends at target left edge center
+      expect(wp[wp.length - 1].x).toBe(tgtLayout.x!);
+      expect(wp[wp.length - 1].y).toBe(tgtLayout.y! + tgtH / 2);
+
+      // All segments orthogonal
+      for (let i = 1; i < wp.length; i++) {
+        const dx = Math.abs(wp[i].x - wp[i - 1].x);
+        const dy = Math.abs(wp[i].y - wp[i - 1].y);
+        expect(dx < 1 || dy < 1, `segment ${i - 1}->${i} not orthogonal`).toBe(true);
+      }
+    }
+  });
+});
+
 describe('Message Flow Routing', () => {
   it('generates orthogonal waypoints for cross-pool message flows', async () => {
     const input = `process: test

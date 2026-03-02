@@ -3,6 +3,7 @@ import type { ElkNode, ElkExtendedEdge, ELK } from 'elkjs';
 import type {
   Document,
   Process,
+  Pool,
   FlowNode,
   Lane,
   SequenceFlow,
@@ -356,6 +357,9 @@ function computeContainerBounds(process: Process, result: LayoutResult): void {
     }
   }
 
+  // Re-route pool-level sequence flows (cross-lane inline flows)
+  routePoolSequenceFlows(pools, result);
+
   // Compute pool bounds (encompassing all lanes and direct elements)
   for (const pool of pools) {
     if (!pool.id) continue;
@@ -476,6 +480,52 @@ function routeMessageFlows(process: Process, result: LayoutResult): void {
       if (flow.id) {
         result.edges.set(flow.id, { waypoints });
       }
+    }
+  }
+}
+
+/**
+ * Re-route pool-level sequence flows using final node positions.
+ * Cross-lane inline flows (`->`) are stored on pool.sequenceFlows,
+ * whose waypoints are not adjusted during lane stacking.
+ */
+function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): void {
+  for (const pool of pools) {
+    if (!pool.sequenceFlows) continue;
+
+    for (const flow of pool.sequenceFlows) {
+      if (!flow.id || !flow.from || !flow.to) continue;
+
+      const srcLayout = result.elements.get(flow.from);
+      const tgtLayout = result.elements.get(flow.to);
+      if (!srcLayout || !tgtLayout) continue;
+
+      const srcW = srcLayout.width ?? 100;
+      const srcH = srcLayout.height ?? 80;
+      const tgtH = tgtLayout.height ?? 80;
+
+      // Exit right edge center of source
+      const srcX = srcLayout.x! + srcW;
+      const srcY = srcLayout.y! + srcH / 2;
+      // Enter left edge center of target
+      const tgtX = tgtLayout.x!;
+      const tgtY = tgtLayout.y! + tgtH / 2;
+
+      const waypoints: Waypoint[] = [];
+      if (Math.abs(srcY - tgtY) < 1) {
+        // Same Y — straight horizontal line
+        waypoints.push({ x: srcX, y: srcY });
+        waypoints.push({ x: tgtX, y: tgtY });
+      } else {
+        // Z-shape: right → down/up → right
+        const midX = (srcX + tgtX) / 2;
+        waypoints.push({ x: srcX, y: srcY });
+        waypoints.push({ x: midX, y: srcY });
+        waypoints.push({ x: midX, y: tgtY });
+        waypoints.push({ x: tgtX, y: tgtY });
+      }
+
+      result.edges.set(flow.id, { waypoints });
     }
   }
 }
