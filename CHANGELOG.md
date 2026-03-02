@@ -1,3 +1,15 @@
+# [0.10.0](https://github.com/cwygoda/bpmn-txt/compare/v0.9.1...v0.10.0) (2026-03-02)
+
+
+### Bug Fixes
+
+* **docs:** harden accessibility and dark mode contrast ([ed66184](https://github.com/cwygoda/bpmn-txt/commit/ed6618467f4b88ec9dad3c5fbb14bc5ead751509))
+
+
+### Features
+
+* **layout:** orthogonal routing for cross-pool message flows ([9d0c903](https://github.com/cwygoda/bpmn-txt/commit/9d0c9032b7c2387e83d6bf3686224c8ebe4b3623))
+
 ## [0.9.1](https://github.com/cwygoda/bpmn-txt/compare/v0.9.0...v0.9.1) (2026-02-27)
 
 
