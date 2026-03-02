@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/cwygoda/bpmn-txt/compare/v0.12.0...v0.13.0) (2026-03-02)
+
+
+### Features
+
+* center BPMNLabel on message flow edges ([e48bb3a](https://github.com/cwygoda/bpmn-txt/commit/e48bb3a94280358670dd52497a6edaad7aec3895))
+
 # [0.12.0](https://github.com/cwygoda/bpmn-txt/compare/v0.11.1...v0.12.0) (2026-03-02)
 
 
