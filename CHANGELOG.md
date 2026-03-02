@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/cwygoda/bpmn-txt/compare/v0.11.1...v0.12.0) (2026-03-02)
+
+
+### Features
+
+* emit bpmn:message elements and messageRef on message flows ([8b34618](https://github.com/cwygoda/bpmn-txt/commit/8b34618ce7b843b737acf82b4b4bd6fbdd3bd77e))
+
 ## [0.11.1](https://github.com/cwygoda/bpmn-txt/compare/v0.11.0...v0.11.1) (2026-03-02)
 
 
