@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/cwygoda/bpmn-txt/compare/v0.13.0...v0.13.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* remove BPMNLabel from message flow edges ([296e93f](https://github.com/cwygoda/bpmn-txt/commit/296e93fc7a5171095853817a81d509569e73b54e))
+
 # [0.13.0](https://github.com/cwygoda/bpmn-txt/compare/v0.12.0...v0.13.0) (2026-03-02)
 
 
