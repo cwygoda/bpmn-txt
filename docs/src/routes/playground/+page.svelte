@@ -256,10 +256,19 @@
 </div>
 
 <style>
+  :global(.content:has(.playground)) {
+    max-width: 100%;
+    padding: 0.5rem;
+  }
+
+  :global(.layout:has(.playground) ~ .site-footer) {
+    display: none;
+  }
+
   .playground {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - var(--nav-height) - 4rem);
+    height: calc(100vh - var(--nav-height) - 1rem);
     min-height: 500px;
   }
 
@@ -390,6 +399,7 @@
 
   .viewer {
     flex: 1;
+    padding: 1rem;
     background: white;
   }
 
