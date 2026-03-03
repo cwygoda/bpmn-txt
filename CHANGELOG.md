@@ -1,3 +1,16 @@
+# [0.14.0](https://github.com/cwygoda/bpmn-txt/compare/v0.13.3...v0.14.0) (2026-03-03)
+
+
+### Bug Fixes
+
+* **routing:** model pool label zones as obstacles for message flows ([a873ec6](https://github.com/cwygoda/bpmn-txt/commit/a873ec60cc8c8d1f7f93f668361f53d8fd994a23))
+
+
+### Features
+
+* **playground:** expand to full viewport width and hide footer ([4f7673e](https://github.com/cwygoda/bpmn-txt/commit/4f7673ecedccb0e6a9d212ecc23b8dbc6518a9fe))
+* **routing:** obstacle-aware orthogonal routing for message flows ([2ea00a7](https://github.com/cwygoda/bpmn-txt/commit/2ea00a7d1733bafefac8f6668e22da379bcdded9))
+
 ## [0.13.3](https://github.com/cwygoda/bpmn-txt/compare/v0.13.2...v0.13.3) (2026-03-02)
 
 
