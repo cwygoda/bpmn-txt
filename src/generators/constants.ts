@@ -15,6 +15,9 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
   lane: { width: 600, height: 150 },
 };
 
+// Pool label zone (vertical band on left edge of horizontal pools)
+export const POOL_LABEL_WIDTH = 30;
+
 // Obstacle-aware routing constants
 export const OBSTACLE_MARGIN = 15;
 export const BEND_PENALTY = 50;
