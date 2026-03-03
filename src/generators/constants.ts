@@ -11,5 +11,11 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
   dataObject: { width: 36, height: 50 },
   dataStore: { width: 50, height: 50 },
   pool: { width: 600, height: 200 },
+  collapsedPool: { width: 600, height: 60 },
   lane: { width: 600, height: 150 },
 };
+
+// Obstacle-aware routing constants
+export const OBSTACLE_MARGIN = 15;
+export const BEND_PENALTY = 50;
+export const PARALLEL_TOLERANCE = 5;

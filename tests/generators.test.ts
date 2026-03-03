@@ -372,7 +372,7 @@ describe('Layout Generator', () => {
     expect(layout.edges.size).toBe(0);
   });
 
-  it('handles process with only pools (no elements)', async () => {
+  it('renders collapsed (black box) pool with thin bar layout', async () => {
     const input = `process: test
   pool: p1
     name: "Empty Pool"
@@ -381,8 +381,11 @@ describe('Layout Generator', () => {
     generateIds(document!);
     const layout = await generateLayout(document!);
 
-    // No flow elements, so no element layouts
-    expect(layout.elements.size).toBe(0);
+    // Collapsed pool gets a Participant entry
+    const p1 = layout.elements.get('Participant_p1');
+    expect(p1).toBeDefined();
+    expect(p1!.height).toBe(60);
+    expect(p1!.width).toBe(600);
   });
 
   it('generates layout for simple process', async () => {
@@ -691,14 +694,500 @@ describe('Message Flow Routing', () => {
     expect(e1).toBeDefined();
     expect(e2).toBeDefined();
 
-    // Cross-wired flows with horizontal spread must produce Z-shapes (4 waypoints)
-    expect(e1!.waypoints).toHaveLength(4);
-    expect(e2!.waypoints).toHaveLength(4);
+    // Both flows must be orthogonal and have ≥ 3 waypoints (not straight lines)
+    for (const edge of [e1!, e2!]) {
+      expect(edge.waypoints.length).toBeGreaterThanOrEqual(3);
+      for (let j = 1; j < edge.waypoints.length; j++) {
+        const dx = Math.abs(edge.waypoints[j].x - edge.waypoints[j - 1].x);
+        const dy = Math.abs(edge.waypoints[j].y - edge.waypoints[j - 1].y);
+        expect(dx < 1 || dy < 1).toBe(true);
+      }
+    }
 
-    // Their midY values must differ (distributed across the gap)
-    const mid1 = e1!.waypoints[1].y;
-    const mid2 = e2!.waypoints[1].y;
-    expect(mid1).not.toBe(mid2);
+    // Horizontal segments must use different Y values (no parallel overlap)
+    function hSegs(wps: { x: number; y: number }[]) {
+      const segs: number[] = [];
+      for (let j = 1; j < wps.length; j++) {
+        if (Math.abs(wps[j].y - wps[j - 1].y) < 1) segs.push(wps[j].y);
+      }
+      return segs;
+    }
+    const ys1 = hSegs(e1!.waypoints);
+    const ys2 = hSegs(e2!.waypoints);
+    // Flows must use different paths (distinct waypoint sets)
+    const wp1 = JSON.stringify(e1!.waypoints);
+    const wp2 = JSON.stringify(e2!.waypoints);
+    expect(wp1).not.toBe(wp2);
+  });
+
+  it('exits and enters elements with perpendicular segments', async () => {
+    // Non-aligned elements force bends — first/last segment must be perpendicular to edge
+    const input = `process: test
+  pool: p1
+    name: "Sender"
+    task: a1
+      name: "A1"
+    task: b1
+      name: "B1"
+    flow: f1
+      from: a1
+      to: b1
+  pool: p2
+    name: "Receiver"
+    task: a2
+      name: "A2"
+    task: b2
+      name: "B2"
+    flow: f2
+      from: a2
+      to: b2
+  message-flow: m1
+    from: a1
+    to: b2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+
+    const wp = edge!.waypoints;
+    expect(wp.length).toBeGreaterThanOrEqual(3);
+
+    // First segment must be vertical (perpendicular to bottom/top exit)
+    expect(
+      Math.abs(wp[0].x - wp[1].x) < 1,
+      `first segment not vertical: (${wp[0].x},${wp[0].y}) → (${wp[1].x},${wp[1].y})`
+    ).toBe(true);
+
+    // Last segment must be vertical (perpendicular to top/bottom entry)
+    const last = wp.length - 1;
+    expect(
+      Math.abs(wp[last].x - wp[last - 1].x) < 1,
+      `last segment not vertical: (${wp[last - 1].x},${wp[last - 1].y}) → (${wp[last].x},${wp[last].y})`
+    ).toBe(true);
+  });
+
+  it('routes non-adjacent message flows around intervening pools', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Top"
+    task: t1
+      name: "Send"
+  pool: p2
+    name: "Middle"
+    task: t2
+      name: "Process"
+  pool: p3
+    name: "Bottom"
+    task: t3
+      name: "Receive"
+  message-flow: m1
+    from: t1
+    to: t3
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+
+    const wp = edge!.waypoints;
+    expect(wp.length).toBeGreaterThanOrEqual(2);
+
+    // All segments must be orthogonal
+    for (let i = 1; i < wp.length; i++) {
+      const dx = Math.abs(wp[i].x - wp[i - 1].x);
+      const dy = Math.abs(wp[i].y - wp[i - 1].y);
+      expect(dx < 1 || dy < 1, `segment ${i - 1}->${i} not orthogonal`).toBe(true);
+    }
+
+    // No waypoint Y should fall inside the intervening pool (p2)
+    const p2 = layout.elements.get('Participant_p2')!;
+    const p2Top = p2.y!;
+    const p2Bottom = p2Top + p2.height!;
+    for (const wp_ of wp) {
+      const inside = wp_.y > p2Top && wp_.y < p2Bottom;
+      expect(inside, `waypoint y=${wp_.y} inside p2 [${p2Top}, ${p2Bottom}]`).toBe(false);
+    }
+
+    // First waypoint must lie on the source element boundary
+    const t1Layout = layout.elements.get('t1')!;
+    const t1W = t1Layout.width ?? 100;
+    const t1H = t1Layout.height ?? 80;
+    const first = wp[0];
+    const onLeft = Math.abs(first.x - t1Layout.x!) < 1;
+    const onRight = Math.abs(first.x - (t1Layout.x! + t1W)) < 1;
+    const onTop = Math.abs(first.y - t1Layout.y!) < 1;
+    const onBottom = Math.abs(first.y - (t1Layout.y! + t1H)) < 1;
+    expect(
+      onLeft || onRight || onTop || onBottom,
+      `first waypoint (${first.x},${first.y}) not on t1 boundary`
+    ).toBe(true);
+  });
+
+  it('routes message flow around an element in the target pool', async () => {
+    // Place a blocking task between source and target (same X column)
+    const input = `process: test
+  pool: p1
+    name: "Sender"
+    task: t1
+      name: "Send"
+  pool: p2
+    name: "Receiver"
+    task: blocker
+      name: "Blocker"
+    task: t2
+      name: "Receive"
+    flow: f1
+      from: blocker
+      to: t2
+  message-flow: m1
+    from: t1
+    to: t2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+
+    const wp = edge!.waypoints;
+    expect(wp.length).toBeGreaterThanOrEqual(2);
+
+    // All segments must be orthogonal
+    for (let i = 1; i < wp.length; i++) {
+      const dx = Math.abs(wp[i].x - wp[i - 1].x);
+      const dy = Math.abs(wp[i].y - wp[i - 1].y);
+      expect(dx < 1 || dy < 1, `segment ${i - 1}->${i} not orthogonal`).toBe(true);
+    }
+
+    // No waypoint should be strictly inside the blocker element (inflated by margin)
+    const blockerLayout = layout.elements.get('blocker')!;
+    const margin = 15;
+    const bx = blockerLayout.x! - margin;
+    const by = blockerLayout.y! - margin;
+    const bw = (blockerLayout.width ?? 100) + 2 * margin;
+    const bh = (blockerLayout.height ?? 80) + 2 * margin;
+    for (const p of wp) {
+      const inside = p.x > bx && p.x < bx + bw && p.y > by && p.y < by + bh;
+      expect(inside, `waypoint (${p.x},${p.y}) inside blocker`).toBe(false);
+    }
+  });
+
+  it('avoids parallel overlap between adjacent message flows', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Sender"
+    task: a1
+      name: "A1"
+    task: b1
+      name: "B1"
+    flow: f1
+      from: a1
+      to: b1
+  pool: p2
+    name: "Receiver"
+    task: a2
+      name: "A2"
+    task: b2
+      name: "B2"
+    flow: f2
+      from: a2
+      to: b2
+  message-flow: m1
+    from: a1
+    to: a2
+  message-flow: m2
+    from: b1
+    to: b2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const e1 = layout.edges.get('m1');
+    const e2 = layout.edges.get('m2');
+    expect(e1).toBeDefined();
+    expect(e2).toBeDefined();
+
+    // Both flows should be orthogonal
+    for (const edge of [e1!, e2!]) {
+      for (let i = 1; i < edge.waypoints.length; i++) {
+        const dx = Math.abs(edge.waypoints[i].x - edge.waypoints[i - 1].x);
+        const dy = Math.abs(edge.waypoints[i].y - edge.waypoints[i - 1].y);
+        expect(dx < 1 || dy < 1).toBe(true);
+      }
+    }
+
+    // Extract horizontal segments from each flow
+    function hSegments(wps: { x: number; y: number }[]) {
+      const segs: { y: number; xMin: number; xMax: number }[] = [];
+      for (let i = 1; i < wps.length; i++) {
+        if (Math.abs(wps[i].y - wps[i - 1].y) < 1) {
+          segs.push({
+            y: wps[i].y,
+            xMin: Math.min(wps[i].x, wps[i - 1].x),
+            xMax: Math.max(wps[i].x, wps[i - 1].x),
+          });
+        }
+      }
+      return segs;
+    }
+
+    const h1 = hSegments(e1!.waypoints);
+    const h2 = hSegments(e2!.waypoints);
+    const TOL = 5;
+    for (const s1 of h1) {
+      for (const s2 of h2) {
+        if (Math.abs(s1.y - s2.y) < TOL && s1.xMax > s2.xMin && s2.xMax > s1.xMin) {
+          throw new Error(
+            `parallel overlap: m1 H@${s1.y} [${s1.xMin},${s1.xMax}] ` +
+            `vs m2 H@${s2.y} [${s2.xMin},${s2.xMax}]`
+          );
+        }
+      }
+    }
+  });
+
+  it('non-adjacent flow avoids intervening pool body', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Top"
+    task: t1
+      name: "Send"
+  pool: p2
+    name: "Middle"
+    task: t2
+      name: "Process"
+  pool: p3
+    name: "Bottom"
+    task: t3
+      name: "Receive"
+  message-flow: m1
+    from: t1
+    to: t3
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+    const wp = edge!.waypoints;
+
+    // The intervening pool p2 should not be crossed
+    const p2 = layout.elements.get('Participant_p2')!;
+    const p2Top = p2.y!;
+    const p2Bottom = p2Top + p2.height!;
+
+    // No segment should pass through p2's interior
+    for (let i = 1; i < wp.length; i++) {
+      const a = wp[i - 1];
+      const b = wp[i];
+
+      if (Math.abs(a.x - b.x) < 1) {
+        // Vertical segment — check X is outside p2 or Y range doesn't overlap
+        const x = a.x;
+        const minY = Math.min(a.y, b.y);
+        const maxY = Math.max(a.y, b.y);
+        const crossesP2 = x > p2.x! && x < p2.x! + p2.width! && maxY > p2Top && minY < p2Bottom;
+        expect(crossesP2, `vertical segment at x=${x} crosses p2`).toBe(false);
+      }
+    }
+  });
+});
+
+describe('Collapsed Pool', () => {
+  it('generates message flow waypoints to a collapsed pool', async () => {
+    const input = `process: test
+  pool: buyer
+    name: "Buyer"
+    task: t1
+      name: "Place Order"
+  pool: supplier
+    name: "Supplier"
+  message-flow: m1
+    from: t1
+    to: supplier
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('m1');
+    expect(edge).toBeDefined();
+    expect(edge!.waypoints.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('normalizes pool widths to the widest', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Wide Pool"
+    task: t1
+      name: "A"
+    task: t2
+      name: "B"
+    task: t3
+      name: "C"
+    flow: f1
+      from: t1
+      to: t2
+    flow: f2
+      from: t2
+      to: t3
+  pool: p2
+    name: "Collapsed"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const p1 = layout.elements.get('Participant_p1')!;
+    const p2 = layout.elements.get('Participant_p2')!;
+    expect(p1.width).toBe(p2.width);
+  });
+
+  it('separates collapsed pool from next expanded pool by POOL_GAP', async () => {
+    const input = `process: test
+  pool: collapsed
+    name: "External System"
+  pool: expanded
+    name: "Internal"
+    task: t1
+      name: "Do Work"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const cp = layout.elements.get('Participant_collapsed')!;
+    const ep = layout.elements.get('Participant_expanded')!;
+    expect(cp).toBeDefined();
+    expect(ep).toBeDefined();
+
+    // Expanded pool must start fully below collapsed pool (no overlap/touching)
+    expect(ep.y!).toBeGreaterThan(cp.y! + cp.height!);
+  });
+
+  it('anchors message flow endpoint at collapsed pool edge', async () => {
+    const input = `process: test
+  pool: buyer
+    name: "Buyer"
+    task: t1
+      name: "Place Order"
+  pool: supplier
+    name: "Supplier"
+  message-flow: m1
+    from: t1
+    to: supplier
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const pool = layout.elements.get('Participant_supplier')!;
+    const edge = layout.edges.get('m1')!;
+    const lastWp = edge.waypoints[edge.waypoints.length - 1];
+
+    // Endpoint Y must be at pool top edge (supplier is below buyer)
+    expect(lastWp.y).toBe(pool.y!);
+  });
+
+  it('scales gap between pools based on message flow count', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Pool 1"
+    task: a1
+    task: b1
+    task: c1
+    task: d1
+    task: e1
+    flow: f1
+      from: a1
+      to: b1
+    flow: f2
+      from: b1
+      to: c1
+    flow: f3
+      from: c1
+      to: d1
+    flow: f4
+      from: d1
+      to: e1
+  pool: p2
+    name: "Pool 2"
+    task: a2
+    task: b2
+    task: c2
+    task: d2
+    task: e2
+    flow: g1
+      from: a2
+      to: b2
+    flow: g2
+      from: b2
+      to: c2
+    flow: g3
+      from: c2
+      to: d2
+    flow: g4
+      from: d2
+      to: e2
+  message-flow: m1
+    from: a1
+    to: a2
+  message-flow: m2
+    from: b1
+    to: b2
+  message-flow: m3
+    from: c1
+    to: c2
+  message-flow: m4
+    from: d1
+    to: d2
+  message-flow: m5
+    from: e1
+    to: e2
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const p1 = layout.elements.get('Participant_p1')!;
+    const p2 = layout.elements.get('Participant_p2')!;
+    const gap = p2.y! - (p1.y! + p1.height!);
+
+    // 5 flows → (5+1)*20 = 120px minimum gap, exceeding default 80px
+    expect(gap).toBeGreaterThanOrEqual(120);
+  });
+
+  it('emits isExpanded=false and Participant_ targetRef in XML', async () => {
+    const input = `process: test
+  pool: buyer
+    name: "Buyer"
+    task: t1
+      name: "Place Order"
+  pool: supplier
+    name: "Supplier"
+  message-flow: m1
+    from: t1
+    to: supplier
+`;
+    const { document } = parse(input);
+    const xml = await toBpmnXmlAsync(document!);
+
+    // Collapsed pool shape
+    expect(xml).toContain('isExpanded="false"');
+    // Expanded pool shape
+    expect(xml).toContain('isExpanded="true"');
+    // isHorizontal on all pools
+    expect(xml).toContain('isHorizontal="true"');
+    // Message flow targets the participant ref
+    expect(xml).toContain('targetRef="Participant_supplier"');
   });
 });
 

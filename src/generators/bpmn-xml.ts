@@ -222,8 +222,9 @@ function buildCollaboration(doc: Document): Record<string, unknown> {
     }
 
     if (proc.messageFlows) {
+      const poolIdSet = new Set((proc.pools ?? []).map(p => p.id).filter(Boolean) as string[]);
       for (const flow of proc.messageFlows) {
-        messageFlows.push(buildMessageFlow(flow));
+        messageFlows.push(buildMessageFlow(flow, poolIdSet));
       }
     }
   }
@@ -769,11 +770,11 @@ function buildSequenceFlow(flow: SequenceFlow): Record<string, unknown> {
   return result;
 }
 
-function buildMessageFlow(flow: MessageFlow): Record<string, unknown> {
+function buildMessageFlow(flow: MessageFlow, poolIds: Set<string>): Record<string, unknown> {
   const result: Record<string, unknown> = {
     '@_id': flow.id,
-    '@_sourceRef': flow.from,
-    '@_targetRef': flow.to,
+    '@_sourceRef': poolIds.has(flow.from) ? `Participant_${flow.from}` : flow.from,
+    '@_targetRef': poolIds.has(flow.to) ? `Participant_${flow.to}` : flow.to,
   };
   if (flow.name) result['@_name'] = flow.name;
   if (flow.message) result['@_messageRef'] = `Message_${flow.message}`;
@@ -809,7 +810,9 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
     for (const pool of pools) {
       const participantId = `Participant_${pool.id}`;
       const poolLayout = layout.elements.get(participantId);
-      shapes.push(buildShape(participantId, poolLayout ?? pool.layout, 'pool'));
+      const { elements: poolElems } = collectFromPool(pool);
+      const shapeType = poolElems.length === 0 ? 'collapsedPool' : 'pool';
+      shapes.push(buildShape(participantId, poolLayout ?? pool.layout, shapeType));
     }
     for (const lane of lanes) {
       if (!lane.id) continue;
@@ -907,6 +910,11 @@ function buildShape(
     '@_width': layout?.width ?? defaultSize.width,
     '@_height': layout?.height ?? defaultSize.height,
   };
+
+  if (elementType === 'pool' || elementType === 'collapsedPool') {
+    shape['@_isHorizontal'] = 'true';
+    shape['@_isExpanded'] = elementType === 'pool' ? 'true' : 'false';
+  }
 
   return shape;
 }

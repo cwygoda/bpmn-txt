@@ -68,6 +68,7 @@ export async function generateLayout(
 
 const POOL_GAP = 80;
 const CONTAINER_PADDING = 50;
+const MIN_FLOW_SPACING = 20;
 
 async function layoutProcess(
   process: Process,
@@ -82,10 +83,25 @@ async function layoutProcess(
   // Per-pool layout with vertical stacking
   const result: LayoutResult = { elements: new Map(), edges: new Map() };
   let yOffset = 0;
+  const poolGaps = computePoolGaps(process);
 
-  for (const pool of process.pools!) {
+  for (let i = 0; i < process.pools!.length; i++) {
+    const pool = process.pools![i];
+    const gap = poolGaps[i];
     const poolElements = collectFromPool(pool);
-    if (poolElements.elements.length === 0) continue;
+    if (poolElements.elements.length === 0) {
+      // Collapsed (black box) pool — thin horizontal bar
+      // Offset Y by -CONTAINER_PADDING*2 to align with expanded pool Participant boxes
+      // (expanded pools extend CONTAINER_PADDING*2 above their content)
+      const collapsedY = yOffset - CONTAINER_PADDING * 2;
+      result.elements.set(`Participant_${pool.id}`, {
+        x: 0, y: collapsedY,
+        width: ELEMENT_SIZES.collapsedPool.width,
+        height: ELEMENT_SIZES.collapsedPool.height,
+      });
+      yOffset = collapsedY + ELEMENT_SIZES.collapsedPool.height + gap + CONTAINER_PADDING * 2;
+      continue;
+    }
 
     const poolResult = await layoutElements(
       poolElements.elements,
@@ -98,7 +114,7 @@ async function layoutProcess(
     // Offset must clear both this pool's bottom padding and the next pool's top padding.
     const bounds = computeBoundsForElements(poolElements.elements, result);
     if (bounds) {
-      yOffset = bounds.maxY + CONTAINER_PADDING * 4 + POOL_GAP;
+      yOffset = bounds.maxY + CONTAINER_PADDING * 4 + gap;
     }
   }
 
@@ -113,8 +129,68 @@ async function layoutProcess(
   }
 
   computeContainerBounds(process, result);
+
+  // Normalize all pool X positions and widths to the widest
+  if (process.pools!.length > 1) {
+    let minX = Infinity;
+    let maxRight = -Infinity;
+    for (const pool of process.pools!) {
+      if (!pool.id) continue;
+      const layout = result.elements.get(`Participant_${pool.id}`);
+      if (layout && layout.x !== undefined && layout.width) {
+        minX = Math.min(minX, layout.x);
+        maxRight = Math.max(maxRight, layout.x + layout.width);
+      }
+    }
+    const normalizedWidth = maxRight - minX;
+    for (const pool of process.pools!) {
+      if (!pool.id) continue;
+      const layout = result.elements.get(`Participant_${pool.id}`);
+      if (layout) {
+        layout.x = minX;
+        layout.width = normalizedWidth;
+      }
+    }
+  }
+
   routeMessageFlows(process, result);
   return result;
+}
+
+/**
+ * Compute per-gap spacing between consecutive pools.
+ * Scales up from POOL_GAP when many message flows cross between a pair.
+ */
+function computePoolGaps(process: Process): number[] {
+  const pools = process.pools ?? [];
+  const gaps = new Array(pools.length).fill(POOL_GAP);
+  if (!process.messageFlows || pools.length < 2) return gaps;
+
+  const elemToPoolIdx = new Map<string, number>();
+  pools.forEach((pool, idx) => {
+    if (!pool.id) return;
+    elemToPoolIdx.set(pool.id, idx);
+    const { elements } = collectFromPool(pool);
+    for (const elem of elements) {
+      if (elem.id) elemToPoolIdx.set(elem.id, idx);
+    }
+  });
+
+  // Count flows between each consecutive pool pair
+  const pairCounts = new Array(pools.length).fill(0);
+  for (const flow of process.messageFlows) {
+    const srcIdx = elemToPoolIdx.get(flow.from);
+    const tgtIdx = elemToPoolIdx.get(flow.to);
+    if (srcIdx === undefined || tgtIdx === undefined || srcIdx === tgtIdx) continue;
+    if (Math.abs(srcIdx - tgtIdx) === 1) {
+      pairCounts[Math.min(srcIdx, tgtIdx)]++;
+    }
+  }
+
+  for (let i = 0; i < pools.length - 1; i++) {
+    gaps[i] = Math.max(POOL_GAP, (pairCounts[i] + 1) * MIN_FLOW_SPACING);
+  }
+  return gaps;
 }
 
 async function layoutFlat(
