@@ -7,7 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       // Redirect elkjs to its bundled web version
-      'elkjs': path.resolve('../node_modules/elkjs/lib/elk.bundled.js')
+      'elkjs': path.resolve('../node_modules/elkjs/lib/elk.bundled.js'),
+      // Resolve to TypeScript source for live reload during dev
+      'bpmn-txt': path.resolve('../src/index.ts')
     }
   },
   optimizeDeps: {
