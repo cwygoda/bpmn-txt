@@ -21,4 +21,4 @@ export const POOL_LABEL_WIDTH = 30;
 // Obstacle-aware routing constants
 export const OBSTACLE_MARGIN = 15;
 export const BEND_PENALTY = 50;
-export const PARALLEL_TOLERANCE = 5;
+export const PARALLEL_TOLERANCE = 2;
