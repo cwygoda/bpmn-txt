@@ -7,7 +7,7 @@ Tracked from thorough review on 2026-03-13. Work one-by-one: test first, then im
 - [x] **1. `||` → `??` in `buildElkGraph` defaults** — `layout.ts:296-298`
   `options.nodeSpacing || 50` swallows explicit `0`. Use `??` for all three spacing options. Also fixed nodeSpacing fallback 50→70 to match generateLayout default.
 
-- [ ] **2. Lane width not updated after pool normalization** — `layout.ts:134-154`
+- [x] **2. Lane width not updated after pool normalization** — `layout.ts:134-154`
   After normalizing pool X/width to widest, lanes inside aren't cascaded. Leaves visual gap on right edge.
 
 - [ ] **3. Collapsed pool negative Y when first** — `layout.ts:96`

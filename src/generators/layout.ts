@@ -146,9 +146,24 @@ async function layoutProcess(
     for (const pool of process.pools!) {
       if (!pool.id) continue;
       const layout = result.elements.get(`Participant_${pool.id}`);
-      if (layout) {
-        layout.x = minX;
-        layout.width = normalizedWidth;
+      if (!layout) continue;
+
+      const prevX = layout.x ?? 0;
+      const prevWidth = layout.width ?? 0;
+      layout.x = minX;
+      layout.width = normalizedWidth;
+
+      // Cascade to lanes: lanes sit inside pool with PADDING offset from pool edge
+      if (pool.lanes) {
+        const laneX = minX + CONTAINER_PADDING;
+        const laneWidth = normalizedWidth - 2 * CONTAINER_PADDING;
+        for (const lane of pool.lanes) {
+          if (!lane.id) continue;
+          const laneLayout = result.elements.get(lane.id);
+          if (!laneLayout) continue;
+          laneLayout.x = laneX;
+          laneLayout.width = laneWidth;
+        }
       }
     }
   }
