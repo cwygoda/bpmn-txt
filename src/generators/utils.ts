@@ -1,8 +1,22 @@
-import type { Process, Pool, Lane, FlowNode, SequenceFlow } from '../ast/types.js';
+import type { Process, Pool, Lane, FlowNode, SequenceFlow, Task, Subprocess } from '../ast/types.js';
 
 export interface CollectedElements {
   elements: FlowNode[];
   flows: SequenceFlow[];
+}
+
+/**
+ * Collect boundary events from an array of flow elements.
+ * Tasks and subprocesses may have nested boundaryEvents arrays.
+ */
+function collectBoundaryEvents(elements: FlowNode[]): FlowNode[] {
+  const boundary: FlowNode[] = [];
+  for (const el of elements) {
+    if ((el.type === 'task' || el.type === 'subprocess') && (el as Task | Subprocess).boundaryEvents) {
+      boundary.push(...(el as Task | Subprocess).boundaryEvents!);
+    }
+  }
+  return boundary;
 }
 
 /**
@@ -18,6 +32,7 @@ export function collectFromProcess(process: Process): CollectedElements {
     for (const pool of process.pools) {
       if (pool.elements) {
         elements.push(...pool.elements);
+        elements.push(...collectBoundaryEvents(pool.elements));
       }
       if (pool.sequenceFlows) {
         flows.push(...pool.sequenceFlows);
@@ -26,6 +41,7 @@ export function collectFromProcess(process: Process): CollectedElements {
         for (const lane of pool.lanes) {
           if (lane.elements) {
             elements.push(...lane.elements);
+            elements.push(...collectBoundaryEvents(lane.elements));
           }
           if (lane.sequenceFlows) {
             flows.push(...lane.sequenceFlows);
@@ -38,6 +54,7 @@ export function collectFromProcess(process: Process): CollectedElements {
   // Direct elements
   if (process.elements) {
     elements.push(...process.elements);
+    elements.push(...collectBoundaryEvents(process.elements));
   }
   if (process.sequenceFlows) {
     flows.push(...process.sequenceFlows);
@@ -52,11 +69,17 @@ export function collectFromProcess(process: Process): CollectedElements {
 export function collectFromPool(pool: Pool): CollectedElements {
   const elements: FlowNode[] = [];
   const flows: SequenceFlow[] = [];
-  if (pool.elements) elements.push(...pool.elements);
+  if (pool.elements) {
+    elements.push(...pool.elements);
+    elements.push(...collectBoundaryEvents(pool.elements));
+  }
   if (pool.sequenceFlows) flows.push(...pool.sequenceFlows);
   if (pool.lanes) {
     for (const lane of pool.lanes) {
-      if (lane.elements) elements.push(...lane.elements);
+      if (lane.elements) {
+        elements.push(...lane.elements);
+        elements.push(...collectBoundaryEvents(lane.elements));
+      }
       if (lane.sequenceFlows) flows.push(...lane.sequenceFlows);
     }
   }
