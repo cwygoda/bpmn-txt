@@ -93,7 +93,7 @@ async function layoutProcess(
       // Collapsed (black box) pool — thin horizontal bar
       // Offset Y by -CONTAINER_PADDING*2 to align with expanded pool Participant boxes
       // (expanded pools extend CONTAINER_PADDING*2 above their content)
-      const collapsedY = yOffset - CONTAINER_PADDING * 2;
+      const collapsedY = Math.max(0, yOffset - CONTAINER_PADDING * 2);
       result.elements.set(`Participant_${pool.id}`, {
         x: 0, y: collapsedY,
         width: ELEMENT_SIZES.collapsedPool.width,
