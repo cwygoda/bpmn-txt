@@ -1,6 +1,7 @@
 import adapter from '@sveltejs/adapter-static';
 import { mdsvex } from 'mdsvex';
 import { createHighlighter } from 'shiki';
+import { remarkBpmn } from './src/lib/remark-bpmn.js';
 
 const highlighter = await createHighlighter({
   themes: ['github-dark', 'github-light'],
@@ -13,8 +14,10 @@ const config = {
   preprocess: [
     mdsvex({
       extensions: ['.md'],
+      remarkPlugins: [remarkBpmn],
       highlight: {
         highlighter: (code, lang) => {
+          if (lang === 'bpmn') return '';
           const html = highlighter.codeToHtml(code, {
             lang: lang || 'text',
             themes: { light: 'github-light', dark: 'github-dark' }

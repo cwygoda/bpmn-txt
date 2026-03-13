@@ -56,7 +56,12 @@ export const sidebar: Record<string, SidebarItem[]> = {
     {
       text: 'Examples',
       items: [
-        { text: 'Overview', link: '/examples' },
+        { text: 'Overview', link: '/examples' }
+      ]
+    },
+    {
+      text: 'Walkthroughs',
+      items: [
         { text: 'Simple Process', link: '/examples/simple-process' },
         { text: 'Approval Workflow', link: '/examples/approval-workflow' },
         { text: 'Order Fulfillment', link: '/examples/order-fulfillment' },
