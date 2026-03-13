@@ -8,6 +8,72 @@ import { findOrthogonalPath, waypointsToSegments, type Rect, type Segment } from
 const EXIT_STUB = 20;
 
 /**
+ * Count how many Z-shape segments intersect obstacles for a given midpoint.
+ * axis='x' → H→V→H (midX), axis='y' → V→H→V (midY).
+ */
+function countZShapeHits(
+  src: Waypoint, tgt: Waypoint, mid: number,
+  axis: 'x' | 'y', obstacles: Rect[]
+): number {
+  let hits = 0;
+  if (axis === 'x') {
+    const p1: Waypoint = { x: mid, y: src.y };
+    const p2: Waypoint = { x: mid, y: tgt.y };
+    if (!isHorizontalLineClear(src, p1, obstacles)) hits++;
+    if (!isVerticalLineClear(p1, p2, obstacles)) hits++;
+    if (!isHorizontalLineClear(p2, tgt, obstacles)) hits++;
+  } else {
+    const p1: Waypoint = { x: src.x, y: mid };
+    const p2: Waypoint = { x: tgt.x, y: mid };
+    if (!isVerticalLineClear(src, p1, obstacles)) hits++;
+    if (!isHorizontalLineClear(p1, p2, obstacles)) hits++;
+    if (!isVerticalLineClear(p2, tgt, obstacles)) hits++;
+  }
+  return hits;
+}
+
+/**
+ * Find a Z-shape midpoint that avoids obstacles when possible.
+ * Tries naive midpoint first, then obstacle edges as candidates.
+ */
+function findBestZMid(
+  src: Waypoint, tgt: Waypoint,
+  axis: 'x' | 'y', obstacles: Rect[]
+): number {
+  const naive = axis === 'x' ? (src.x + tgt.x) / 2 : (src.y + tgt.y) / 2;
+  const naiveHits = countZShapeHits(src, tgt, naive, axis, obstacles);
+  if (naiveHits === 0) return naive;
+
+  // Collect obstacle-edge candidates (just outside each obstacle)
+  const margin = OBSTACLE_MARGIN + 5;
+  const candidates: number[] = [];
+  for (const r of obstacles) {
+    if (axis === 'x') {
+      candidates.push(r.x - margin, r.x + r.width + margin);
+    } else {
+      candidates.push(r.y - margin, r.y + r.height + margin);
+    }
+  }
+
+  // Filter to range between src and tgt
+  const lo = axis === 'x' ? Math.min(src.x, tgt.x) : Math.min(src.y, tgt.y);
+  const hi = axis === 'x' ? Math.max(src.x, tgt.x) : Math.max(src.y, tgt.y);
+
+  let best = naive;
+  let bestHits = naiveHits;
+  for (const c of candidates) {
+    if (c < lo || c > hi) continue;
+    const hits = countZShapeHits(src, tgt, c, axis, obstacles);
+    if (hits < bestHits) {
+      bestHits = hits;
+      best = c;
+      if (hits === 0) break;
+    }
+  }
+  return best;
+}
+
+/**
  * Merge collinear consecutive waypoints (same X or same Y through 3+ points).
  */
 function simplifyWaypoints(wps: Waypoint[]): Waypoint[] {
@@ -745,7 +811,7 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
           if (Math.abs(src.y - tgt.y) < 1) {
             waypoints = [src, tgt];
           } else {
-            const midX = (src.x + tgt.x) / 2;
+            const midX = findBestZMid(src, tgt, 'x', obstacles);
             waypoints = [src, { x: midX, y: src.y }, { x: midX, y: tgt.y }, tgt];
           }
         } else if (!srcIsHExit && !tgtIsHEntry) {
@@ -753,7 +819,7 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
           if (Math.abs(src.x - tgt.x) < 1) {
             waypoints = [src, tgt];
           } else {
-            const midY = (src.y + tgt.y) / 2;
+            const midY = findBestZMid(src, tgt, 'y', obstacles);
             waypoints = [src, { x: src.x, y: midY }, { x: tgt.x, y: midY }, tgt];
           }
         } else if (srcIsHExit) {
