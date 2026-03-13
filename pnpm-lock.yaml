@@ -87,6 +87,9 @@ importers:
       codemirror:
         specifier: ^6.0.1
         version: 6.0.2
+      unist-util-visit:
+        specifier: ^5.1.0
+        version: 5.1.0
     devDependencies:
       '@playwright/test':
         specifier: ^1.50.1
