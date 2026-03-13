@@ -867,6 +867,51 @@ describe('Cross-Lane Sequence Flow Routing', () => {
       }
     }
   });
+
+  it('Z-shape fallback does not route through obstacles', async () => {
+    // 3 tasks in a line with a flow from first to last — midpoint must avoid middle task
+    const input = `process: test
+  pool: p1
+    name: "Pool"
+    task: t1
+      name: "First"
+    task: t2
+      name: "Middle Blocker"
+    task: t3
+      name: "Last"
+    flow: f1
+      from: t1
+      to: t2
+    flow: f2
+      from: t2
+      to: t3
+    flow: skip
+      from: t1
+      to: t3
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const edge = layout.edges.get('skip');
+    expect(edge).toBeDefined();
+
+    const t2Layout = layout.elements.get('t2')!;
+    expect(t2Layout).toBeDefined();
+
+    // The "skip" flow's intermediate waypoints should not pass through t2's bounding box
+    const t2x = t2Layout.x!;
+    const t2y = t2Layout.y!;
+    const t2w = t2Layout.width ?? 100;
+    const t2h = t2Layout.height ?? 80;
+
+    for (let i = 1; i < edge!.waypoints.length - 1; i++) {
+      const wp = edge!.waypoints[i];
+      const insideX = wp.x > t2x && wp.x < t2x + t2w;
+      const insideY = wp.y > t2y && wp.y < t2y + t2h;
+      expect(insideX && insideY).toBe(false);
+    }
+  });
 });
 
 describe('Message Flow Routing', () => {
