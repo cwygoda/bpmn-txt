@@ -39,7 +39,7 @@ export async function generateLayout(
   doc: Document,
   options: LayoutOptions = {}
 ): Promise<LayoutResult> {
-  const { direction = 'RIGHT', nodeSpacing = 50, layerSpacing = 100, edgeSpacing = 20 } = options;
+  const { direction = 'RIGHT', nodeSpacing = 70, layerSpacing = 100, edgeSpacing = 20 } = options;
 
   const result: LayoutResult = {
     elements: new Map(),
