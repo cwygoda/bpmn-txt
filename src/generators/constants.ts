@@ -18,6 +18,14 @@ export const ELEMENT_SIZES: Record<string, { width: number; height: number }> = 
 // Pool label zone (vertical band on left edge of horizontal pools)
 export const POOL_LABEL_WIDTH = 30;
 
+/**
+ * Compute pool label width proportional to name length.
+ * Returns at least POOL_LABEL_WIDTH, capped at 50px.
+ */
+export function computePoolLabelWidth(name: string): number {
+  return Math.max(30, Math.min(50, 20 + name.length * 0.8));
+}
+
 // Obstacle-aware routing constants
 export const OBSTACLE_MARGIN = 15;
 export const BEND_PENALTY = 50;

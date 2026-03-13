@@ -1,7 +1,7 @@
 import type { Process, Pool, MessageFlow, Layout, Waypoint } from '../ast/types.js';
 import type { LayoutResult } from './layout.js';
 import { collectFromPool } from './utils.js';
-import { OBSTACLE_MARGIN, POOL_LABEL_WIDTH } from './constants.js';
+import { OBSTACLE_MARGIN, computePoolLabelWidth } from './constants.js';
 import { findOrthogonalPath, waypointsToSegments, type Rect, type Segment } from './obstacle-router.js';
 
 /** Distance of the perpendicular stub from element edge before A* routing. */
@@ -308,13 +308,19 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     }
   }
 
-  // Pool label zones — 30px vertical band on left edge of each pool
-  const poolLabelObstacles: Rect[] = allPoolLayouts.map(layout => ({
-    x: layout.x!,
-    y: layout.y!,
-    width: POOL_LABEL_WIDTH,
-    height: layout.height!,
-  }));
+  // Pool label zones — proportional to pool name length
+  const poolLabelObstacles: Rect[] = [];
+  for (const pool of process.pools) {
+    if (!pool.id) continue;
+    const layout = result.elements.get(`Participant_${pool.id}`);
+    if (!layout) continue;
+    poolLabelObstacles.push({
+      x: layout.x!,
+      y: layout.y!,
+      width: computePoolLabelWidth(pool.name || pool.id || ''),
+      height: layout.height!,
+    });
+  }
 
   // Container IDs to exclude from obstacles (pools + lanes)
   const containerIds = new Set<string>();
