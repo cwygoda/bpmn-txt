@@ -946,11 +946,12 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
     for (const flow of allFlows) {
       if (!flow.id) continue;
 
+      const labelText = flow.name || flow.condition;
       const flowLayout = layout.edges.get(flow.id);
       if (flowLayout) {
-        edges.push(buildEdge(flow.id, flowLayout.waypoints));
+        edges.push(buildEdge(flow.id, flowLayout.waypoints, labelText));
       } else if (flow.layout?.waypoints) {
-        edges.push(buildEdge(flow.id, flow.layout.waypoints));
+        edges.push(buildEdge(flow.id, flow.layout.waypoints, labelText));
       } else {
         // Edge without waypoints - minimal placeholder
         edges.push({
@@ -964,9 +965,10 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
     if (proc.messageFlows) {
       for (const flow of proc.messageFlows) {
         if (!flow.id) continue;
+        const labelText = flow.name;
         const flowLayout = layout.edges.get(flow.id);
         if (flowLayout) {
-          edges.push(buildEdge(flow.id, flowLayout.waypoints));
+          edges.push(buildEdge(flow.id, flowLayout.waypoints, labelText));
         } else {
           edges.push({
             '@_id': `${flow.id}_di`,
@@ -1023,9 +1025,71 @@ function buildShape(
   return shape;
 }
 
+/**
+ * Compute label bounds at the midpoint of a polyline.
+ * Estimates text width at ~7px/char, height at 14px.
+ * Offsets perpendicular to the segment for readability.
+ */
+export function computeEdgeLabelBounds(
+  waypoints: { x: number; y: number }[],
+  text: string
+): { x: number; y: number; width: number; height: number } {
+  const labelW = Math.max(30, text.length * 7);
+  const labelH = 14;
+  const OFFSET = 10; // perpendicular offset from edge
+
+  if (waypoints.length < 2) {
+    return { x: 0, y: 0, width: labelW, height: labelH };
+  }
+
+  // Compute total polyline length and find midpoint
+  let totalLen = 0;
+  const segLens: number[] = [];
+  for (let i = 1; i < waypoints.length; i++) {
+    const dx = waypoints[i].x - waypoints[i - 1].x;
+    const dy = waypoints[i].y - waypoints[i - 1].y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    segLens.push(len);
+    totalLen += len;
+  }
+
+  const halfLen = totalLen / 2;
+  let accumulated = 0;
+  for (let i = 0; i < segLens.length; i++) {
+    if (accumulated + segLens[i] >= halfLen) {
+      const t = segLens[i] > 0 ? (halfLen - accumulated) / segLens[i] : 0;
+      const p0 = waypoints[i];
+      const p1 = waypoints[i + 1];
+      const midX = p0.x + t * (p1.x - p0.x);
+      const midY = p0.y + t * (p1.y - p0.y);
+
+      // Perpendicular offset (rotate segment direction 90°)
+      const dx = p1.x - p0.x;
+      const dy = p1.y - p0.y;
+      const segLen = segLens[i] || 1;
+      const nx = -dy / segLen;
+      const ny = dx / segLen;
+
+      return {
+        x: Math.round(midX + nx * OFFSET - labelW / 2),
+        y: Math.round(midY + ny * OFFSET - labelH / 2),
+        width: labelW,
+        height: labelH,
+      };
+    }
+    accumulated += segLens[i];
+  }
+
+  // Fallback: use first segment midpoint
+  const mx = (waypoints[0].x + waypoints[1].x) / 2;
+  const my = (waypoints[0].y + waypoints[1].y) / 2;
+  return { x: Math.round(mx - labelW / 2), y: Math.round(my - OFFSET - labelH / 2), width: labelW, height: labelH };
+}
+
 function buildEdge(
   flowId: string,
-  waypoints: { x: number; y: number }[]
+  waypoints: { x: number; y: number }[],
+  labelText?: string
 ): Record<string, unknown> {
   const edge: Record<string, unknown> = {
     '@_id': `${flowId}_di`,
@@ -1037,6 +1101,18 @@ function buildEdge(
       '@_x': wp.x,
       '@_y': wp.y,
     }));
+  }
+
+  if (labelText && waypoints.length >= 2) {
+    const bounds = computeEdgeLabelBounds(waypoints, labelText);
+    edge['bpmndi:BPMNLabel'] = {
+      'dc:Bounds': {
+        '@_x': bounds.x,
+        '@_y': bounds.y,
+        '@_width': bounds.width,
+        '@_height': bounds.height,
+      },
+    };
   }
 
   return edge;

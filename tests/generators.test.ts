@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../src/parser/index.js';
-import { generateIds, toJson, toObject, toBpmnXml, toBpmnXmlAsync, generateLayout } from '../src/generators/index.js';
+import { generateIds, toJson, toObject, toBpmnXml, toBpmnXmlAsync, generateLayout, computeEdgeLabelBounds } from '../src/generators/index.js';
 
 describe('ID Generator', () => {
   it('preserves existing IDs', () => {
@@ -1596,4 +1596,89 @@ describe('Async BPMN XML Export with Layout', () => {
     expect(subProcessMatch![0]).toContain('bpmn:sequenceFlow');
   });
 
+  it('adds BPMNLabel for flow with condition', async () => {
+    const input = `process: test
+  start: s1
+  gateway: g1
+    type: exclusive
+  task: t1
+    name: "Path A"
+  task: t2
+    name: "Path B"
+  end: e1
+  flow: f1
+    from: s1
+    to: g1
+  flow: f2
+    from: g1
+    to: t1
+    condition: "x > 10"
+  flow: f3
+    from: g1
+    to: t2
+  flow: f4
+    from: t1
+    to: e1
+  flow: f5
+    from: t2
+    to: e1
+`;
+    const { document } = parse(input);
+    const xml = await toBpmnXmlAsync(document!);
+
+    // Flow with condition should have BPMNLabel
+    expect(xml).toContain('bpmnElement="f2"');
+    const f2Match = xml.match(/<bpmndi:BPMNEdge[^>]*bpmnElement="f2"[^>]*>[\s\S]*?<\/bpmndi:BPMNEdge>/);
+    expect(f2Match).not.toBeNull();
+    expect(f2Match![0]).toContain('bpmndi:BPMNLabel');
+    expect(f2Match![0]).toContain('dc:Bounds');
+
+    // Flow without condition/name should NOT have BPMNLabel
+    const f1Match = xml.match(/<bpmndi:BPMNEdge[^>]*bpmnElement="f1"[^>]*>[\s\S]*?<\/bpmndi:BPMNEdge>/);
+    expect(f1Match).not.toBeNull();
+    expect(f1Match![0]).not.toContain('bpmndi:BPMNLabel');
+  });
+
+  it('adds BPMNLabel for flow with name', async () => {
+    const input = `process: test
+  task: t1
+    name: "A"
+  task: t2
+    name: "B"
+  flow: f1
+    from: t1
+    to: t2
+    name: "approval"
+`;
+    const { document } = parse(input);
+    const xml = await toBpmnXmlAsync(document!);
+
+    const f1Match = xml.match(/<bpmndi:BPMNEdge[^>]*bpmnElement="f1"[^>]*>[\s\S]*?<\/bpmndi:BPMNEdge>/);
+    expect(f1Match).not.toBeNull();
+    expect(f1Match![0]).toContain('bpmndi:BPMNLabel');
+  });
+
+});
+
+describe('computeEdgeLabelBounds', () => {
+  it('computes label at midpoint of horizontal segment', () => {
+    const bounds = computeEdgeLabelBounds(
+      [{ x: 0, y: 100 }, { x: 200, y: 100 }],
+      'Yes'
+    );
+    // Midpoint at x=100, y=100, offset perpendicular (upward for horizontal)
+    expect(bounds.x).toBeGreaterThan(50);
+    expect(bounds.x).toBeLessThan(150);
+    expect(bounds.width).toBeGreaterThanOrEqual(30);
+    expect(bounds.height).toBe(14);
+  });
+
+  it('computes label at midpoint of multi-segment polyline', () => {
+    const bounds = computeEdgeLabelBounds(
+      [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 200, y: 100 }],
+      'condition text'
+    );
+    expect(bounds.width).toBe(Math.max(30, 'condition text'.length * 7));
+    expect(bounds.height).toBe(14);
+  });
 });
