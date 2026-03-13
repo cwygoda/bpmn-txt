@@ -1535,4 +1535,65 @@ describe('Async BPMN XML Export with Layout', () => {
     expect(xml).toContain('bpmndi:BPMNShape');
   });
 
+  it('layouts subprocess children with absolute positions inside subprocess bounds', async () => {
+    const input = `process: test
+  subprocess: sub1
+    name: "My Subprocess"
+    start: s1
+      name: "Start"
+      -> t1
+    task: t1
+      name: "Do Work"
+      -> e1
+    end: e1
+      name: "End"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const xml = await toBpmnXmlAsync(document!);
+
+    // Subprocess should be auto-sized larger than default 200x150
+    const layout = await generateLayout(document!);
+    const subLayout = layout.elements.get('sub1')!;
+    expect(subLayout).toBeDefined();
+    expect(subLayout.width!).toBeGreaterThan(200);
+
+    // Children should have absolute positions inside subprocess bounds
+    const s1Layout = layout.elements.get('s1')!;
+    const t1Layout = layout.elements.get('t1')!;
+    const e1Layout = layout.elements.get('e1')!;
+    expect(s1Layout).toBeDefined();
+    expect(t1Layout).toBeDefined();
+    expect(e1Layout).toBeDefined();
+
+    // Children must be within subprocess bounds
+    expect(s1Layout.x!).toBeGreaterThanOrEqual(subLayout.x!);
+    expect(s1Layout.y!).toBeGreaterThanOrEqual(subLayout.y!);
+    expect(t1Layout.x!).toBeGreaterThanOrEqual(subLayout.x!);
+    expect(e1Layout.x! + (e1Layout.width ?? 36)).toBeLessThanOrEqual(subLayout.x! + subLayout.width!);
+
+    // BPMNShape elements should exist for children
+    expect(xml).toContain('bpmnElement="s1"');
+    expect(xml).toContain('bpmnElement="t1"');
+    expect(xml).toContain('bpmnElement="e1"');
+
+    // Subprocess should be marked as expanded
+    expect(xml).toContain('isExpanded="true"');
+
+    // Internal flow waypoints should exist
+    const flowEdge = layout.edges.get('flow_s1_t1_0') ?? layout.edges.get('flow_t1_e1_1');
+    // At least some internal flows should have waypoints
+    const hasInternalFlows = Array.from(layout.edges.keys()).some(
+      k => k.includes('s1') || k.includes('t1') || k.includes('e1')
+    );
+    expect(hasInternalFlows).toBe(true);
+
+    // Internal flows should be nested inside bpmn:subProcess in XML
+    expect(xml).toContain('bpmn:subProcess');
+    // Sequence flows between subprocess children should be inside the subprocess
+    const subProcessMatch = xml.match(/<bpmn:subProcess[^>]*>[\s\S]*?<\/bpmn:subProcess>/);
+    expect(subProcessMatch).not.toBeNull();
+    expect(subProcessMatch![0]).toContain('bpmn:sequenceFlow');
+  });
+
 });
