@@ -10,45 +10,46 @@ Tracked from thorough review on 2026-03-13. Work one-by-one: test first, then im
 - [x] **2. Lane width not updated after pool normalization** — `layout.ts:134-154`
   After normalizing pool X/width to widest, lanes inside aren't cascaded. Leaves visual gap on right edge.
 
-- [ ] **3. Collapsed pool negative Y when first** — `layout.ts:96`
-  `yOffset - CONTAINER_PADDING * 2` = -100 when first pool is collapsed. All coords shift negative.
+- [x] **3. Collapsed pool negative Y when first** — `layout.ts:96`
+  `yOffset - CONTAINER_PADDING * 2` = -100 when first pool is collapsed. Clamped with `Math.max(0, ...)`. Regression test added.
 
-- [ ] **4. Z-shape fallback ignores obstacles** — `routing.ts:748,756`
-  Midpoint `(src + tgt) / 2` not checked against obstacles. Flow can route through elements.
+- [x] **4. Z-shape fallback ignores obstacles** — `routing.ts:748,756`
+  Added `findBestZMid()` that tries obstacle-edge candidates when naive midpoint hits elements. Regression test added.
 
-- [ ] **5. Dead return value in `mergeWithOffset`** — `layout.ts:232-248`
-  Returns `maxY + POOL_GAP` but caller ignores it. Remove return or use it.
+- [x] **5. Dead return value in `mergeWithOffset`** — `layout.ts:232-248`
+  Removed dead return; changed to `void`. Both callers use `computeBoundsForElements` instead.
 
-- [ ] **6. `waypoints` null safety in message flow routing** — `routing.ts:496`
-  `waypointsToSegments(waypoints)` where `waypoints` could theoretically be null.
+- [x] **6. `waypoints` null safety in message flow routing** — `routing.ts:496`
+  Added `if (!waypoints) continue` guard before `waypointsToSegments` call.
 
 ## Visual / Layout Issues
 
-- [ ] **7. EXIT_STUB doesn't adapt to pool gap** — `routing.ts:8,449`
-  Fixed 20px. If gap < 40px, stubs from both sides overlap. Should cap at `gap / 3`.
+- [x] **7. EXIT_STUB doesn't adapt to pool gap** — `routing.ts:8,449`
+  Capped with `Math.min(EXIT_STUB, gapHeight / 3)` (floor 5px) for adjacent pool routing.
 
-- [ ] **8. Fan-out only handles top/bottom peers** — `routing.ts:533-541`
-  3+ outgoing gateway flows: only extremes get fan-out. Middle flows pick suboptimal edges.
+- [x] **8. Fan-out only handles top/bottom peers** — `routing.ts:533-541`
+  Middle peers now interpolate Y along left/right edge based on peer direction.
 
 - [ ] **9. Routing ignores layout direction** — `routing.ts`
   Custom routing hardcodes RIGHT/DOWN assumptions. LEFT/UP directions produce wrong edge points.
+  *Skipped: architectural change requiring direction param threaded through all routing functions. Low priority — LEFT/UP layouts rare in BPMN.*
 
-- [ ] **10. Boundary events not collected for ELK layout** — `utils.ts`
-  `collectFromProcess`/`collectFromPool` don't recurse into `element.boundaryEvents`. No auto-positioning.
+- [x] **10. Boundary events not collected for ELK layout** — `utils.ts`
+  Both `collectFromProcess` and `collectFromPool` now recurse into task/subprocess `boundaryEvents`.
 
-- [ ] **11. `PARALLEL_TOLERANCE=5` too aggressive** — `constants.ts:24`
-  Causes A* failures in dense diagrams, falling back to obstacle-ignoring Z-shapes.
+- [x] **11. `PARALLEL_TOLERANCE=5` too aggressive** — `constants.ts:24`
+  Reduced from 5px to 2px. Still prevents visual overlap, fewer A* failures in dense diagrams.
 
 ## Performance
 
-- [ ] **12. `coordToIdx` linear search on sorted arrays** — `obstacle-router.ts:182`
-  `indexOf` is O(n). Binary search would be O(log n).
+- [x] **12. `coordToIdx` linear search on sorted arrays** — `obstacle-router.ts:182`
+  Replaced `indexOf` with `bsearch()` — O(log n) on sorted xs/ys arrays.
 
-- [ ] **13. A* priority queue uses `Array.splice`** — `obstacle-router.ts:244`
-  O(n) insertion. Binary heap = O(log n).
+- [x] **13. A* priority queue uses `Array.splice`** — `obstacle-router.ts:244`
+  Replaced sorted-array with binary min-heap. O(log n) insert/extract.
 
-- [ ] **14. `collectFromPool` called redundantly** — `layout.ts:91,173`
-  Same pool's elements collected twice during layout.
+- [x] **14. `collectFromPool` called redundantly** — `layout.ts:91,173`
+  Pre-computed `poolElementsCache` Map eliminates duplicate calls.
 
 ## Enhancements (Future)
 
