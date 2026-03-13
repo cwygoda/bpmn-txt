@@ -10,7 +10,7 @@ import type {
   Waypoint,
 } from '../ast/types.js';
 import { ELEMENT_SIZES } from './constants.js';
-import { collectFromProcess, collectFromPool, collectPoolsAndLanes } from './utils.js';
+import { collectFromProcess, collectFromPool, collectPoolsAndLanes, type CollectedElements } from './utils.js';
 import { routeMessageFlows, routePoolSequenceFlows } from './routing.js';
 
 // elkjs ESM default export requires type coercion
@@ -83,12 +83,19 @@ async function layoutProcess(
   // Per-pool layout with vertical stacking
   const result: LayoutResult = { elements: new Map(), edges: new Map() };
   let yOffset = 0;
-  const poolGaps = computePoolGaps(process);
+
+  // Pre-collect pool elements (avoids redundant collectFromPool calls)
+  const poolElementsCache = new Map<string, CollectedElements>();
+  for (const pool of process.pools!) {
+    if (pool.id) poolElementsCache.set(pool.id, collectFromPool(pool));
+  }
+
+  const poolGaps = computePoolGaps(process, poolElementsCache);
 
   for (let i = 0; i < process.pools!.length; i++) {
     const pool = process.pools![i];
     const gap = poolGaps[i];
-    const poolElements = collectFromPool(pool);
+    const poolElements = poolElementsCache.get(pool.id!) ?? collectFromPool(pool);
     if (poolElements.elements.length === 0) {
       // Collapsed (black box) pool — thin horizontal bar
       // Offset Y by -CONTAINER_PADDING*2 to align with expanded pool Participant boxes
@@ -176,7 +183,10 @@ async function layoutProcess(
  * Compute per-gap spacing between consecutive pools.
  * Scales up from POOL_GAP when many message flows cross between a pair.
  */
-function computePoolGaps(process: Process): number[] {
+function computePoolGaps(
+  process: Process,
+  poolElementsCache?: Map<string, CollectedElements>
+): number[] {
   const pools = process.pools ?? [];
   const gaps = new Array(pools.length).fill(POOL_GAP);
   if (!process.messageFlows || pools.length < 2) return gaps;
@@ -185,7 +195,7 @@ function computePoolGaps(process: Process): number[] {
   pools.forEach((pool, idx) => {
     if (!pool.id) return;
     elemToPoolIdx.set(pool.id, idx);
-    const { elements } = collectFromPool(pool);
+    const { elements } = poolElementsCache?.get(pool.id) ?? collectFromPool(pool);
     for (const elem of elements) {
       if (elem.id) elemToPoolIdx.set(elem.id, idx);
     }
