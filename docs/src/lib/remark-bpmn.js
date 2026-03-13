@@ -23,7 +23,7 @@ export function remarkBpmn() {
 
       parent.children[index] = {
         type: 'html',
-        value: `<BpmnCodeBlock source={\`${escaped}\`} />`
+        value: `<BpmnCodeBlock source={\`${escaped}\`} viewSource />`
       };
     });
 
