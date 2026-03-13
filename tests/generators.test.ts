@@ -388,6 +388,29 @@ describe('Layout Generator', () => {
     expect(p1!.width).toBe(600);
   });
 
+  it('collapsed pool as first pool has non-negative Y', async () => {
+    const input = `process: test
+  pool: external
+    name: "External System"
+  pool: internal
+    name: "Internal"
+    task: t1
+      name: "Do Work"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const cp = layout.elements.get('Participant_external')!;
+    expect(cp).toBeDefined();
+    expect(cp.y).toBeGreaterThanOrEqual(0);
+
+    // All elements should have non-negative coordinates
+    for (const [, bounds] of layout.elements) {
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('generates layout for simple process', async () => {
     const input = `process: test
   start: s1
