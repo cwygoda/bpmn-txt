@@ -558,6 +558,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         }
       }
 
+      if (!waypoints) continue;
+
       // Track routed segments for subsequent flows
       routedSegments.push(...waypointsToSegments(waypoints));
 
