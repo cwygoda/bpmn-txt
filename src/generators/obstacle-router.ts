@@ -232,7 +232,37 @@ function astar(
     if (yi + 1 < ys.length) yield idx + cols; // down
   }
 
-  const open: AStarNode[] = [];
+  // Binary min-heap priority queue — O(log n) insert/extract vs O(n) splice
+  const heap: AStarNode[] = [];
+  function heapPush(node: AStarNode) {
+    heap.push(node);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (heap[parent].f <= heap[i].f) break;
+      [heap[parent], heap[i]] = [heap[i], heap[parent]];
+      i = parent;
+    }
+  }
+  function heapPop(): AStarNode {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length > 0) {
+      heap[0] = last;
+      let i = 0;
+      while (true) {
+        let smallest = i;
+        const l = 2 * i + 1, r = 2 * i + 2;
+        if (l < heap.length && heap[l].f < heap[smallest].f) smallest = l;
+        if (r < heap.length && heap[r].f < heap[smallest].f) smallest = r;
+        if (smallest === i) break;
+        [heap[i], heap[smallest]] = [heap[smallest], heap[i]];
+        i = smallest;
+      }
+    }
+    return top;
+  }
+
   const best = new Float64Array(n).fill(Infinity);
 
   const startNode: AStarNode = {
@@ -242,25 +272,14 @@ function astar(
     parent: -1,
     dir: null,
   };
-  open.push(startNode);
+  heapPush(startNode);
   best[startIdx] = 0;
-
-  // Simple priority queue via sorted insert (grid is small)
-  function insertOpen(node: AStarNode) {
-    let lo = 0, hi = open.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (open[mid].f < node.f) lo = mid + 1;
-      else hi = mid;
-    }
-    open.splice(lo, 0, node);
-  }
 
   // Track settled nodes with their parent chain
   const settled = new Map<number, AStarNode>();
 
-  while (open.length > 0) {
-    const current = open.shift()!;
+  while (heap.length > 0) {
+    const current = heapPop();
 
     if (settled.has(current.idx)) continue;
     settled.set(current.idx, current);
@@ -298,7 +317,7 @@ function astar(
 
       if (tentG < best[nIdx]) {
         best[nIdx] = tentG;
-        insertOpen({
+        heapPush({
           idx: nIdx,
           g: tentG,
           f: tentG + heuristic(nIdx),
