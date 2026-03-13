@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { base } from '$app/paths';
   import Nav from '$lib/components/Nav.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import { getSidebar } from '$lib/config';
+  import { initTheme, theme } from '$lib/theme.svelte';
   import '../app.css';
 
   interface Props {
@@ -11,6 +13,13 @@
   }
 
   let { children }: Props = $props();
+
+  onMount(() => initTheme());
+
+  // Keep data-theme in sync reactively (handles system preference changes)
+  $effect(() => {
+    document.documentElement.setAttribute('data-theme', theme.resolved);
+  });
 
   let sidebarItems = $derived(getSidebar(page.url.pathname.replace(base, '')));
   let isHome = $derived(page.url.pathname === base || page.url.pathname === base + '/');

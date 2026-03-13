@@ -28,6 +28,28 @@
   }
 }
 
+html[data-theme="dark"] {
+  --c-bg: #1a1a1a;
+  --c-bg-soft: #242424;
+  --c-bg-mute: #2f2f2f;
+  --c-text: #ffffffde;
+  --c-text-light: #9ca3af;
+  --c-brand: #60a5fa;
+  --c-brand-light: #93c5fd;
+  --c-border: #374151;
+}
+
+html[data-theme="light"] {
+  --c-bg: #ffffff;
+  --c-bg-soft: #f6f6f7;
+  --c-bg-mute: #e3e3e5;
+  --c-text: #213547;
+  --c-text-light: #6b7280;
+  --c-brand: #3b82f6;
+  --c-brand-light: #60a5fa;
+  --c-border: #e5e7eb;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -182,6 +204,9 @@ pre.shiki {
     background-color: #0d1117 !important;
   }
 }
+html[data-theme="dark"] pre.shiki {
+  background-color: #0d1117 !important;
+}
 
 .shiki .line {
   display: block;
@@ -214,6 +239,9 @@ pre.shiki {
   .warning { background-color: #422006; color: #fde68a; }
   .danger { background-color: #450a0a; color: #fecaca; }
 }
+html[data-theme="dark"] .tip { background-color: #1e3a5f; color: #bfdbfe; }
+html[data-theme="dark"] .warning { background-color: #422006; color: #fde68a; }
+html[data-theme="dark"] .danger { background-color: #450a0a; color: #fecaca; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
