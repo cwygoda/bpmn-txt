@@ -375,6 +375,35 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     const gapBottom = aAbove ? poolBLayout.y! : poolALayout.y!;
     const gapHeight = Math.max(gapBottom - gapTop, 0);
 
+    // Pre-compute port spread offsets per element per side (top/bottom)
+    // key = "elementId:top" or "elementId:bottom", value = list of flow IDs
+    const portSlots = new Map<string, string[]>();
+    for (const flow of flows) {
+      const srcPool = elementToPool.get(flow.from)!;
+      const srcIsInUpper = (srcPool === firstSrcPool) === aAbove;
+      const srcSide = srcIsInUpper ? 'bottom' : 'top';
+      const tgtSide = srcIsInUpper ? 'top' : 'bottom';
+
+      const srcKey = `${flow.from}:${srcSide}`;
+      const tgtKey = `${flow.to}:${tgtSide}`;
+      if (!portSlots.has(srcKey)) portSlots.set(srcKey, []);
+      portSlots.get(srcKey)!.push(flow.id!);
+      if (!portSlots.has(tgtKey)) portSlots.set(tgtKey, []);
+      portSlots.get(tgtKey)!.push(flow.id!);
+    }
+
+    // Compute X offset for a flow's connection to an element
+    const PORT_PADDING = 10;
+    function portOffsetX(elementId: string, side: string, flowId: string, elementWidth: number): number {
+      const key = `${elementId}:${side}`;
+      const slots = portSlots.get(key);
+      if (!slots || slots.length <= 1) return 0;
+      const idx = slots.indexOf(flowId);
+      const count = slots.length;
+      const usable = elementWidth - 2 * PORT_PADDING;
+      return -usable / 2 + PORT_PADDING + (idx * usable) / (count - 1);
+    }
+
     // Sort by average X for crossing minimization
     const flowsWithMeta = flows.map(flow => {
       const srcLayout = result.elements.get(flow.from)
@@ -391,7 +420,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
 
     const count = flowsWithMeta.length;
     for (let i = 0; i < count; i++) {
-      const { flow, srcCenterX, tgtCenterX } = flowsWithMeta[i];
+      const { flow } = flowsWithMeta[i];
       const srcLayout = result.elements.get(flow.from)
         ?? (poolIds.has(flow.from) ? result.elements.get(`Participant_${flow.from}`) : undefined);
       const tgtLayout = result.elements.get(flow.to)
@@ -399,9 +428,16 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
       if (!srcLayout || !tgtLayout) continue;
 
       const srcPool = elementToPool.get(flow.from)!;
+      const srcW = srcLayout.width ?? 100;
       const srcH = srcLayout.height ?? 80;
+      const tgtW = tgtLayout.width ?? 100;
       const tgtH = tgtLayout.height ?? 80;
       const srcIsInUpperPool = (srcPool === firstSrcPool) === aAbove;
+
+      const srcSide = srcIsInUpperPool ? 'bottom' : 'top';
+      const tgtSide = srcIsInUpperPool ? 'top' : 'bottom';
+      const srcCenterX = srcLayout.x! + srcW / 2 + portOffsetX(flow.from, srcSide, flow.id!, srcW);
+      const tgtCenterX = tgtLayout.x! + tgtW / 2 + portOffsetX(flow.to, tgtSide, flow.id!, tgtW);
 
       // Exit bottom / enter top (flip when source is below target)
       const srcY = srcIsInUpperPool ? srcLayout.y! + srcH : srcLayout.y!;
