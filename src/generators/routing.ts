@@ -392,16 +392,16 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
       portSlots.get(tgtKey)!.push(flow.id!);
     }
 
-    // Compute X offset for a flow's connection to an element
-    const PORT_PADDING = 10;
+    // Compute X offset from center for a flow's port on an element.
+    // Spreads ports across the middle 50% of the element width.
     function portOffsetX(elementId: string, side: string, flowId: string, elementWidth: number): number {
       const key = `${elementId}:${side}`;
       const slots = portSlots.get(key);
       if (!slots || slots.length <= 1) return 0;
       const idx = slots.indexOf(flowId);
       const count = slots.length;
-      const usable = elementWidth - 2 * PORT_PADDING;
-      return -usable / 2 + PORT_PADDING + (idx * usable) / (count - 1);
+      const spread = elementWidth * 0.5;
+      return -spread / 2 + idx * spread / (count - 1);
     }
 
     // Sort by average X for crossing minimization
