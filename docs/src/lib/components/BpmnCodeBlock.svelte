@@ -4,9 +4,11 @@
 
   interface Props {
     source: string;
+    padding?: number;
+    scale?: number;
   }
 
-  let { source }: Props = $props();
+  let { source, padding = 20, scale = 0.92 }: Props = $props();
 
   let viewerContainer: HTMLDivElement;
   let bpmnViewer: any;
@@ -33,7 +35,38 @@
       });
 
       await bpmnViewer.importXML(xml);
-      bpmnViewer.get('canvas').zoom('fit-viewport');
+      const canvas = bpmnViewer.get('canvas');
+
+      // Get true diagram bounds from the SVG layer's bbox (diagram coords).
+      const svg = viewerContainer.querySelector('svg');
+      const layer = svg?.querySelector('.viewport > g');
+      const bbox = layer?.getBBox();
+      if (!bbox || !bbox.width || !bbox.height) {
+        canvas.zoom('fit-viewport');
+        return;
+      }
+
+      // Cap at container width so diagrams don't overflow.
+      const containerWidth = viewerContainer.clientWidth;
+      const maxScale = containerWidth / bbox.width;
+      const effectiveScale = Math.min(scale, maxScale);
+      const pad = padding / effectiveScale;
+
+      const paddedWidth = bbox.width + pad * 2;
+      const paddedHeight = bbox.height + pad * 2;
+      const screenHeight = paddedHeight * effectiveScale;
+
+      const h = `${Math.max(Math.ceil(screenHeight), 100)}px`;
+      viewerContainer.style.height = h;
+      viewerContainer.style.minHeight = h;
+      viewerContainer.style.flex = 'none';
+
+      canvas.viewbox({
+        x: bbox.x - pad,
+        y: bbox.y - pad,
+        width: paddedWidth,
+        height: paddedHeight
+      });
     } catch (e: any) {
       error = e.message || 'Failed to render diagram';
     }
