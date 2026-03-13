@@ -21,7 +21,7 @@ import type {
 import { generateIds } from './id-generator.js';
 import { generateLayout, applyLayout, type LayoutResult, type LayoutOptions } from './layout.js';
 import { ELEMENT_SIZES } from './constants.js';
-import { collectFromProcess, collectFromPool, collectPoolsAndLanes } from './utils.js';
+import { collectFromProcess, collectAllElements, collectFromPool, collectPoolsAndLanes } from './utils.js';
 
 const BPMN_NS = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
 const BPMNDI_NS = 'http://www.omg.org/spec/BPMN/20100524/DI';
@@ -100,7 +100,7 @@ function collectExistingLayout(doc: Document): LayoutResult {
   const edges = new Map<string, { waypoints: { x: number; y: number }[] }>();
 
   for (const proc of doc.processes) {
-    const { elements: procElements, flows } = collectFromProcess(proc);
+    const { elements: procElements, flows } = collectAllElements(proc);
 
     // Extract element layouts
     for (const elem of procElements) {
@@ -289,13 +289,23 @@ function buildProcess(proc: Process): Record<string, unknown> {
     allFlows.push(...proc.sequenceFlows);
   }
 
-  // Add flow elements to process
-  for (const elem of allElements) {
-    addFlowElement(process, elem);
+  // Pre-compute subprocess internal flows
+  const subFlowMap = computeSubprocessFlowMap(allElements, allFlows);
+  const consumedFlowIds = new Set<string>();
+  for (const flows of subFlowMap.values()) {
+    for (const f of flows) {
+      if (f.id) consumedFlowIds.add(f.id);
+    }
   }
 
-  // Add sequence flows
+  // Add flow elements to process
+  for (const elem of allElements) {
+    addFlowElement(process, elem, subFlowMap);
+  }
+
+  // Add sequence flows (excluding subprocess-internal ones)
   for (const flow of allFlows) {
+    if (flow.id && consumedFlowIds.has(flow.id)) continue;
     if (!process['bpmn:sequenceFlow']) {
       process['bpmn:sequenceFlow'] = [];
     }
@@ -361,11 +371,21 @@ function buildPoolProcess(proc: Process, pool: Pool): Record<string, unknown> {
 
   const { elements, flows } = collectFromPool(pool);
 
+  // Pre-compute subprocess internal flows
+  const subFlowMap = computeSubprocessFlowMap(elements, flows);
+  const consumedFlowIds = new Set<string>();
+  for (const subFlows of subFlowMap.values()) {
+    for (const f of subFlows) {
+      if (f.id) consumedFlowIds.add(f.id);
+    }
+  }
+
   for (const elem of elements) {
-    addFlowElement(process, elem);
+    addFlowElement(process, elem, subFlowMap);
   }
 
   for (const flow of flows) {
+    if (flow.id && consumedFlowIds.has(flow.id)) continue;
     if (!process['bpmn:sequenceFlow']) {
       process['bpmn:sequenceFlow'] = [];
     }
@@ -402,8 +422,22 @@ function buildLaneSet(pool: Pool): Record<string, unknown> {
   return laneSet;
 }
 
-function addFlowElement(process: Record<string, unknown>, elem: FlowNode): void {
-  const { tag, element } = buildFlowElement(elem);
+function addFlowElement(
+  process: Record<string, unknown>,
+  elem: FlowNode,
+  subFlowMap?: Map<string, SequenceFlow[]>
+): void {
+  let tag: string;
+  let element: Record<string, unknown>;
+
+  // For expanded subprocesses, pass internal flows
+  if (elem.type === 'subprocess' && (elem as Subprocess).elements?.length && subFlowMap) {
+    tag = 'bpmn:subProcess';
+    element = buildSubprocess(elem as Subprocess, subFlowMap.get(elem.id!) ?? []);
+  } else {
+    ({ tag, element } = buildFlowElement(elem));
+  }
+
   if (!process[tag]) {
     process[tag] = [];
   }
@@ -645,7 +679,7 @@ function buildTask(task: Task): { tag: string; element: Record<string, unknown> 
   return { tag, element: result };
 }
 
-function buildSubprocess(subprocess: Subprocess): Record<string, unknown> {
+function buildSubprocess(subprocess: Subprocess, internalFlows?: SequenceFlow[]): Record<string, unknown> {
   const result: Record<string, unknown> = {
     '@_id': subprocess.id,
     '@_triggeredByEvent': String(subprocess.triggered ?? false),
@@ -654,16 +688,78 @@ function buildSubprocess(subprocess: Subprocess): Record<string, unknown> {
 
   // Add nested elements
   if (subprocess.elements) {
+    // Pre-compute internal flows for nested subprocesses
+    const nestedFlowMap = computeSubprocessFlowMap(subprocess.elements, internalFlows ?? []);
+
     for (const elem of subprocess.elements) {
-      const { tag, element } = buildFlowElement(elem);
-      if (!result[tag]) {
-        result[tag] = [];
+      if (elem.type === 'subprocess' && (elem as Subprocess).elements?.length) {
+        const { tag, element } = {
+          tag: 'bpmn:subProcess',
+          element: buildSubprocess(elem as Subprocess, nestedFlowMap.get(elem.id!) ?? []),
+        };
+        if (!result[tag]) result[tag] = [];
+        (result[tag] as unknown[]).push(element);
+      } else {
+        const { tag, element } = buildFlowElement(elem);
+        if (!result[tag]) result[tag] = [];
+        (result[tag] as unknown[]).push(element);
       }
-      (result[tag] as unknown[]).push(element);
+
+      // Boundary events
+      if ((elem.type === 'task' || elem.type === 'subprocess') && elem.boundaryEvents) {
+        for (const boundary of elem.boundaryEvents) {
+          const boundaryResult = buildBoundaryEvent(boundary, elem.id!);
+          if (!result['bpmn:boundaryEvent']) result['bpmn:boundaryEvent'] = [];
+          (result['bpmn:boundaryEvent'] as unknown[]).push(boundaryResult);
+        }
+      }
     }
   }
 
+  // Add internal sequence flows
+  if (internalFlows && internalFlows.length > 0) {
+    // Exclude flows consumed by deeper subprocesses
+    const deepConsumed = new Set<string>();
+    if (subprocess.elements) {
+      for (const elem of subprocess.elements) {
+        if (elem.type === 'subprocess' && (elem as Subprocess).elements?.length) {
+          const childIds = new Set((elem as Subprocess).elements!.map(e => e.id).filter(Boolean) as string[]);
+          for (const flow of internalFlows) {
+            if (childIds.has(flow.from) && childIds.has(flow.to) && flow.id) {
+              deepConsumed.add(flow.id);
+            }
+          }
+        }
+      }
+    }
+
+    const ownFlows = internalFlows.filter(f => !f.id || !deepConsumed.has(f.id));
+    if (ownFlows.length > 0) {
+      result['bpmn:sequenceFlow'] = ownFlows.map(flow => buildSequenceFlow(flow));
+    }
+  }
+
+  addFlowReferences(result);
   return result;
+}
+
+/**
+ * Pre-compute which flows are internal to each expanded subprocess.
+ */
+function computeSubprocessFlowMap(
+  elements: FlowNode[],
+  flows: SequenceFlow[]
+): Map<string, SequenceFlow[]> {
+  const map = new Map<string, SequenceFlow[]>();
+  for (const elem of elements) {
+    if (elem.type !== 'subprocess' || !(elem as Subprocess).elements?.length) continue;
+    const childIds = new Set(
+      (elem as Subprocess).elements!.map(e => e.id).filter(Boolean) as string[]
+    );
+    const internal = flows.filter(f => childIds.has(f.from) && childIds.has(f.to));
+    if (internal.length > 0) map.set(elem.id!, internal);
+  }
+  return map;
 }
 
 function buildCallActivity(call: CallActivity): Record<string, unknown> {
@@ -820,17 +916,20 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
       shapes.push(buildShape(lane.id, laneLayout ?? lane.layout, 'lane'));
     }
 
-    // Add shapes for all flow elements
-    const { elements: allElements, flows: allFlows } = collectFromProcess(proc);
+    // Add shapes for all flow elements (including subprocess children)
+    const { elements: allElements, flows: allFlows } = collectAllElements(proc);
     for (const elem of allElements) {
       if (!elem.id) continue;
 
       const elemLayout = layout.elements.get(elem.id);
+      const expanded = elem.type === 'subprocess'
+        && (elem as Subprocess).elements
+        && (elem as Subprocess).elements!.length > 0;
       if (elemLayout) {
-        shapes.push(buildShape(elem.id, elemLayout, elem.type));
+        shapes.push(buildShape(elem.id, elemLayout, elem.type, expanded));
       } else {
         // Use default sizes if no layout
-        shapes.push(buildShape(elem.id, elem.layout, elem.type));
+        shapes.push(buildShape(elem.id, elem.layout, elem.type, expanded));
       }
 
       // Handle boundary events
@@ -894,7 +993,8 @@ function buildDiagram(doc: Document, layout: LayoutResult): Record<string, unkno
 function buildShape(
   elementId: string,
   layout: { x?: number; y?: number; width?: number; height?: number } | undefined,
-  elementType: string
+  elementType: string,
+  isExpanded?: boolean
 ): Record<string, unknown> {
   const defaultSize = ELEMENT_SIZES[elementType] || { width: 100, height: 80 };
 
@@ -914,6 +1014,10 @@ function buildShape(
   if (elementType === 'pool' || elementType === 'collapsedPool') {
     shape['@_isHorizontal'] = 'true';
     shape['@_isExpanded'] = elementType === 'pool' ? 'true' : 'false';
+  }
+
+  if (elementType === 'subprocess' && isExpanded) {
+    shape['@_isExpanded'] = 'true';
   }
 
   return shape;

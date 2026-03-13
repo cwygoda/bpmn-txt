@@ -6,11 +6,12 @@ import type {
   FlowNode,
   Lane,
   SequenceFlow,
+  Subprocess,
   Layout,
   Waypoint,
 } from '../ast/types.js';
 import { ELEMENT_SIZES } from './constants.js';
-import { collectFromProcess, collectFromPool, collectPoolsAndLanes, type CollectedElements } from './utils.js';
+import { collectFromProcess, collectFromPool, collectPoolsAndLanes, collectAllElements, type CollectedElements } from './utils.js';
 import { routeMessageFlows, routePoolSequenceFlows } from './routing.js';
 
 // elkjs ESM default export requires type coercion
@@ -267,48 +268,116 @@ function mergeWithOffset(
   }
 }
 
-function buildElkGraph(
+/**
+ * Collect child IDs of a subprocess (non-recursive — direct children only).
+ */
+function subprocessChildIds(subprocess: Subprocess): Set<string> {
+  const ids = new Set<string>();
+  if (subprocess.elements) {
+    for (const child of subprocess.elements) {
+      if (child.id) ids.add(child.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Build ELK child nodes from elements, nesting subprocess children.
+ * Returns the ELK children and any internal flow IDs consumed by subprocesses.
+ */
+function buildElkChildren(
   elements: FlowNode[],
   flows: SequenceFlow[],
   options: LayoutOptions
-): ElkNode {
+): { children: ElkNode[]; edges: ElkExtendedEdge[]; consumedFlowIds: Set<string> } {
   const children: ElkNode[] = [];
   const edges: ElkExtendedEdge[] = [];
+  const consumedFlowIds = new Set<string>();
 
-  // Add nodes
   for (const elem of elements) {
     if (!elem.id) continue;
 
-    const size = ELEMENT_SIZES[elem.type] || { width: 100, height: 80 };
+    const isExpandedSubprocess = elem.type === 'subprocess'
+      && (elem as Subprocess).elements
+      && (elem as Subprocess).elements!.length > 0;
 
-    // Use explicit layout if provided
-    const node: ElkNode = {
-      id: elem.id,
-      width: elem.layout?.width ?? size.width,
-      height: elem.layout?.height ?? size.height,
-    };
+    if (isExpandedSubprocess) {
+      const subprocess = elem as Subprocess;
+      const childIds = subprocessChildIds(subprocess);
 
-    // If explicit position, set it as a constraint
-    if (elem.layout?.x !== undefined && elem.layout?.y !== undefined) {
-      node.x = elem.layout.x;
-      node.y = elem.layout.y;
+      // Partition flows: internal (both ends inside subprocess) vs external
+      const internalFlows: SequenceFlow[] = [];
+      for (const flow of flows) {
+        if (childIds.has(flow.from) && childIds.has(flow.to)) {
+          internalFlows.push(flow);
+          if (flow.id) consumedFlowIds.add(flow.id);
+        }
+      }
+
+      // Recursively build children (handles nested subprocesses)
+      const nested = buildElkChildren(subprocess.elements!, internalFlows, options);
+      // Also consume any flows consumed by deeper nesting
+      for (const id of nested.consumedFlowIds) consumedFlowIds.add(id);
+
+      const subNode: ElkNode = {
+        id: elem.id,
+        // Don't set width/height — let ELK auto-size from children
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': options.direction ?? 'RIGHT',
+          'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
+          'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
+          'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
+          'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+          'elk.edgeRouting': 'ORTHOGONAL',
+          'elk.padding': '[top=40,left=15,bottom=15,right=15]',
+        },
+        children: nested.children,
+        edges: nested.edges,
+      };
+
+      children.push(subNode);
+    } else {
+      const size = ELEMENT_SIZES[elem.type] || { width: 100, height: 80 };
+
+      const node: ElkNode = {
+        id: elem.id,
+        width: elem.layout?.width ?? size.width,
+        height: elem.layout?.height ?? size.height,
+      };
+
+      if (elem.layout?.x !== undefined && elem.layout?.y !== undefined) {
+        node.x = elem.layout.x;
+        node.y = elem.layout.y;
+      }
+
+      children.push(node);
     }
-
-    children.push(node);
   }
 
-  // Add edges
+  // Add edges (excluding consumed internal flows)
   for (const flow of flows) {
     if (!flow.from || !flow.to) continue;
+    const fid = flow.id || `edge_${flow.from}_${flow.to}`;
+    if (consumedFlowIds.has(fid)) continue;
 
     edges.push({
-      id: flow.id || `edge_${flow.from}_${flow.to}`,
+      id: fid,
       sources: [flow.from],
       targets: [flow.to],
     });
   }
 
-  // ELK layout options
+  return { children, edges, consumedFlowIds };
+}
+
+function buildElkGraph(
+  elements: FlowNode[],
+  flows: SequenceFlow[],
+  options: LayoutOptions
+): ElkNode {
+  const { children, edges } = buildElkChildren(elements, flows, options);
+
   const layoutOptions: Record<string, string> = {
     'elk.algorithm': 'layered',
     'elk.direction': options.direction ?? 'RIGHT',
@@ -331,37 +400,56 @@ function extractLayout(graph: ElkNode): LayoutResult {
   const elements = new Map<string, Layout>();
   const edges = new Map<string, { waypoints: Waypoint[] }>();
 
-  // Extract node positions
-  if (graph.children) {
-    for (const child of graph.children) {
+  extractLayoutRecursive(graph, 0, 0, elements, edges);
+
+  return { elements, edges };
+}
+
+function extractLayoutRecursive(
+  node: ElkNode,
+  offsetX: number,
+  offsetY: number,
+  elements: Map<string, Layout>,
+  edges: Map<string, { waypoints: Waypoint[] }>
+): void {
+  // Extract child node positions
+  if (node.children) {
+    for (const child of node.children) {
       if (child.x !== undefined && child.y !== undefined) {
+        const absX = child.x + offsetX;
+        const absY = child.y + offsetY;
         elements.set(child.id, {
-          x: child.x,
-          y: child.y,
+          x: absX,
+          y: absY,
           width: child.width,
           height: child.height,
         });
+
+        // Recurse into nested children (e.g. expanded subprocesses)
+        if (child.children && child.children.length > 0) {
+          extractLayoutRecursive(child, absX, absY, elements, edges);
+        }
       }
     }
   }
 
-  // Extract edge waypoints
-  if (graph.edges) {
-    for (const edge of graph.edges) {
+  // Extract edge waypoints with offset
+  if (node.edges) {
+    for (const edge of (node.edges as ElkExtendedEdge[])) {
       const waypoints: Waypoint[] = [];
 
       if (edge.sections) {
         for (const section of edge.sections) {
           if (section.startPoint) {
-            waypoints.push({ x: section.startPoint.x, y: section.startPoint.y });
+            waypoints.push({ x: section.startPoint.x + offsetX, y: section.startPoint.y + offsetY });
           }
           if (section.bendPoints) {
             for (const bp of section.bendPoints) {
-              waypoints.push({ x: bp.x, y: bp.y });
+              waypoints.push({ x: bp.x + offsetX, y: bp.y + offsetY });
             }
           }
           if (section.endPoint) {
-            waypoints.push({ x: section.endPoint.x, y: section.endPoint.y });
+            waypoints.push({ x: section.endPoint.x + offsetX, y: section.endPoint.y + offsetY });
           }
         }
       }
@@ -371,8 +459,6 @@ function extractLayout(graph: ElkNode): LayoutResult {
       }
     }
   }
-
-  return { elements, edges };
 }
 
 /**
@@ -518,9 +604,9 @@ export function applyLayout(doc: Document, layout: LayoutResult): void {
 }
 
 function applyLayoutToProcess(process: Process, layout: LayoutResult): void {
-  const { elements, flows } = collectFromProcess(process);
+  const { elements, flows } = collectAllElements(process);
 
-  // Apply to all elements
+  // Apply to all elements (including subprocess children)
   for (const elem of elements) {
     if (elem.id && layout.elements.has(elem.id)) {
       elem.layout = layout.elements.get(elem.id);

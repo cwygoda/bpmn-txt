@@ -87,6 +87,39 @@ export function collectFromPool(pool: Pool): CollectedElements {
 }
 
 /**
+ * Collect all flow elements and sequence flows from a process,
+ * including those nested in pools, lanes, AND subprocess children (recursively).
+ */
+export function collectAllElements(process: Process): CollectedElements {
+  const base = collectFromProcess(process);
+  const elements: FlowNode[] = [];
+  const flows = [...base.flows];
+
+  for (const elem of base.elements) {
+    elements.push(elem);
+    if (elem.type === 'subprocess' && (elem as Subprocess).elements) {
+      collectSubprocessChildren(elem as Subprocess, elements);
+    }
+  }
+
+  return { elements, flows };
+}
+
+/**
+ * Recursively collect subprocess children into a flat list.
+ */
+function collectSubprocessChildren(subprocess: Subprocess, out: FlowNode[]): void {
+  if (!subprocess.elements) return;
+  for (const child of subprocess.elements) {
+    out.push(child);
+    out.push(...collectBoundaryEvents([child]));
+    if (child.type === 'subprocess' && (child as Subprocess).elements) {
+      collectSubprocessChildren(child as Subprocess, out);
+    }
+  }
+}
+
+/**
  * Collect pools and lanes from a process.
  */
 export function collectPoolsAndLanes(process: Process): { pools: Pool[]; lanes: Lane[] } {
