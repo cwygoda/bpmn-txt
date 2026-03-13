@@ -238,18 +238,14 @@ async function layoutElements(
 
 /**
  * Merge a pool's layout into the combined result, offsetting by yOffset.
- * Returns the new yOffset for the next pool.
  */
 function mergeWithOffset(
   source: LayoutResult,
   target: LayoutResult,
   yOffset: number
-): number {
-  let maxY = 0;
-
+): void {
   for (const [id, layout] of source.elements) {
     layout.y = (layout.y ?? 0) + yOffset;
-    maxY = Math.max(maxY, layout.y + (layout.height ?? 0));
     target.elements.set(id, layout);
   }
 
@@ -259,8 +255,6 @@ function mergeWithOffset(
     }
     target.edges.set(id, edge);
   }
-
-  return maxY + POOL_GAP;
 }
 
 function buildElkGraph(
