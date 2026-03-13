@@ -446,6 +446,9 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const srcPoolObj = poolById.get(srcPoolId);
         const tgtPoolObj = poolById.get(tgtPoolId);
 
+        // Cap stub length to gap/3 so stubs from both pools don't overlap
+        const gapStub = Math.min(EXIT_STUB, Math.max(gapHeight / 3, 5));
+
         // Pool boundary Y at the gap edge
         const srcPoolEdgeY = srcIsInUpperPool ? gapTop : gapBottom;
         const tgtPoolEdgeY = srcIsInUpperPool ? gapBottom : gapTop;
@@ -465,8 +468,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           escapeWps = [src];
         } else {
           const stubDir = srcIsInUpperPool ? 1 : -1;
-          const srcStub: Waypoint = { x: srcCenterX, y: srcY + stubDir * EXIT_STUB };
-          const edgeStub: Waypoint = { x: srcCenterX, y: srcPoolEdgeY - stubDir * EXIT_STUB };
+          const srcStub: Waypoint = { x: srcCenterX, y: srcY + stubDir * gapStub };
+          const edgeStub: Waypoint = { x: srcCenterX, y: srcPoolEdgeY - stubDir * gapStub };
           const path = findOrthogonalPath(srcStub, edgeStub, srcPoolObstacles, routedSegments, []);
           escapeWps = path ? simplifyWaypoints([src, ...path]) : [src];
         }
@@ -478,8 +481,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           entryWps = [tgt];
         } else {
           const stubDir = srcIsInUpperPool ? 1 : -1;
-          const edgeStub: Waypoint = { x: tgtCenterX, y: tgtPoolEdgeY + stubDir * EXIT_STUB };
-          const tgtStub: Waypoint = { x: tgtCenterX, y: tgtY - stubDir * EXIT_STUB };
+          const edgeStub: Waypoint = { x: tgtCenterX, y: tgtPoolEdgeY + stubDir * gapStub };
+          const tgtStub: Waypoint = { x: tgtCenterX, y: tgtY - stubDir * gapStub };
           const path = findOrthogonalPath(edgeStub, tgtStub, tgtPoolObstacles, routedSegments, []);
           entryWps = path ? simplifyWaypoints([...path, tgt]) : [tgt];
         }
