@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
+  import { theme } from '$lib/theme.svelte';
 
   let editorContainer: HTMLDivElement;
   let viewerContainer: HTMLDivElement;
@@ -10,7 +11,6 @@
   let errors = $state<Array<{ line?: number; column?: number; message: string; type: 'error' | 'warning' }>>([]);
   let isCompiling = $state(false);
   let xmlOutput = $state('');
-  let isDarkMode = $state(false);
 
   const STORAGE_KEY = 'bpmn-txt-playground-code';
 
@@ -36,18 +36,15 @@
     to: finish
 `;
 
-  onMount(async () => {
-    // Detect dark mode
-    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    isDarkMode = darkModeQuery.matches;
-    darkModeQuery.addEventListener('change', (e) => {
-      isDarkMode = e.matches;
-    });
+  // Compartment ref kept at module scope for $effect access
+  let themeCompartment: any;
+  let oneDarkExt: any;
 
+  onMount(async () => {
     // Dynamically import browser-only modules
     const [
       { EditorView, basicSetup },
-      { EditorState },
+      { EditorState, Compartment },
       { yaml },
       { oneDark },
       bpmnTxt,
@@ -61,6 +58,8 @@
       import('bpmn-js').then(m => m.default)
     ]);
 
+    oneDarkExt = oneDark;
+
     const { parse, validate, toBpmnXmlAsync } = bpmnTxt;
 
     // Expose for testing
@@ -73,8 +72,10 @@
     const saved = localStorage.getItem(STORAGE_KEY);
     const initialCode = saved ?? defaultCode;
 
-    // Build extensions based on theme
-    const baseExtensions = [
+    // Compartment for live theme swapping
+    themeCompartment = new Compartment();
+
+    const extensions = [
       basicSetup,
       yaml(),
       EditorView.updateListener.of((update) => {
@@ -87,11 +88,9 @@
         '&': { height: '100%' },
         '.cm-scroller': { overflow: 'auto' },
         '.cm-content': { fontFamily: 'var(--font-mono)', fontSize: '14px' }
-      })
+      }),
+      themeCompartment.of(theme.isDark ? oneDark : [])
     ];
-
-    // Add dark theme if in dark mode
-    const extensions = isDarkMode ? [...baseExtensions, oneDark] : baseExtensions;
 
     // Initialize CodeMirror
     const startState = EditorState.create({
@@ -123,6 +122,16 @@
       editorView?.destroy();
       bpmnViewer?.destroy();
     };
+  });
+
+  // Live-swap CM6 theme when toggle changes
+  $effect(() => {
+    const dark = theme.isDark;
+    if (editorView && themeCompartment && oneDarkExt) {
+      editorView.dispatch({
+        effects: themeCompartment.reconfigure(dark ? oneDarkExt : [])
+      });
+    }
   });
 
   async function compile(
@@ -231,7 +240,7 @@
 
     <div class="viewer-panel">
       <div class="panel-header">Diagram Preview</div>
-      <div class="viewer" class:dark={isDarkMode} bind:this={viewerContainer}></div>
+      <div class="viewer" class:dark={theme.isDark} bind:this={viewerContainer}></div>
     </div>
   </div>
 
@@ -322,6 +331,14 @@
       color: #86efac;
     }
   }
+  :global(html[data-theme="dark"]) .status.error {
+    background: #450a0a;
+    color: #fca5a5;
+  }
+  :global(html[data-theme="dark"]) .status.success {
+    background: #052e16;
+    color: #86efac;
+  }
 
   button {
     padding: 0.5rem 1rem;
@@ -391,6 +408,9 @@
     .editor {
       background: #282c34;
     }
+  }
+  :global(html[data-theme="dark"]) .editor {
+    background: #282c34;
   }
 
   .editor :global(.cm-editor) {
@@ -493,6 +513,14 @@
       background: #451a03;
       color: #fcd34d;
     }
+  }
+  :global(html[data-theme="dark"]) .error-item.error {
+    background: #450a0a;
+    color: #fca5a5;
+  }
+  :global(html[data-theme="dark"]) .error-item.warning {
+    background: #451a03;
+    color: #fcd34d;
   }
 
   .location {

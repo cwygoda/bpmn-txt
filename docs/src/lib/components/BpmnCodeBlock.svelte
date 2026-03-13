@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { theme } from '$lib/theme.svelte';
 
   interface Props {
     source: string;
@@ -10,16 +11,9 @@
   let viewerContainer: HTMLDivElement;
   let bpmnViewer: any;
   let error = $state<string | null>(null);
-  let isDarkMode = $state(false);
   let showSource = $state(false);
 
   onMount(async () => {
-    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    isDarkMode = darkModeQuery.matches;
-    darkModeQuery.addEventListener('change', (e) => {
-      isDarkMode = e.matches;
-    });
-
     const [bpmnTxt, BpmnJS] = await Promise.all([
       import('bpmn-txt'),
       import('bpmn-js').then(m => m.default)
@@ -59,7 +53,7 @@
     {#if error}
       <div class="error">{error}</div>
     {/if}
-    <div class="viewer" class:dark={isDarkMode} bind:this={viewerContainer}></div>
+    <div class="viewer" class:dark={theme.isDark} bind:this={viewerContainer}></div>
   </div>
 
   {#if showSource}

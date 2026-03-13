@@ -2,6 +2,7 @@
   import { base } from '$app/paths';
   import { page } from '$app/state';
   import { siteConfig, nav } from '$lib/config';
+  import ThemeToggle from './ThemeToggle.svelte';
 
   let menuOpen = $state(false);
 </script>
@@ -32,6 +33,7 @@
       <a href={siteConfig.github} class="nav-link github" target="_blank" rel="noopener noreferrer">
         GitHub<span class="sr-only"> (opens in new tab)</span>
       </a>
+      <ThemeToggle />
     </div>
   </div>
 </nav>

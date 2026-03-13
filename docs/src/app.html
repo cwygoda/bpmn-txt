@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BPMN-TXT - Human-readable BPMN 2.0</title>
     <meta name="description" content="Write business processes in a simple, text-based DSL. Export to standard BPMN XML." />
+    <script>
+      try {
+        var t = localStorage.getItem('bpmn-txt-theme') || 'system';
+        var d = t === 'system'
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          : t;
+        document.documentElement.setAttribute('data-theme', d);
+      } catch(e) {}
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
