@@ -1701,3 +1701,58 @@ describe('computePoolLabelWidth', () => {
     expect(width).toBe(50);
   });
 });
+
+describe('Message flow port spreading', () => {
+  it('spreads ports when multiple message flows connect to the same element', async () => {
+    const input = `process: invoice
+  pool: create-invoice
+    name: "Create Invoice"
+    start: start
+      name: "Invoice requested"
+      -> compute-discount
+    task: compute-discount
+      name: "Compute discount"
+      -> create-invoice
+    task: create-invoice
+      name: "Create invoice"
+      -> end
+    end: end
+      name: End
+
+  pool: discount-rules
+    name: "Rule engine"
+    start: start-discount
+      -> end-discount
+    end: end-discount
+
+  message-flow: to-discount-rule-engine
+    from: compute-discount
+    to: start-discount
+
+  message-flow: from-discount-rule-engine
+    from: end-discount
+    to: compute-discount
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const e1 = layout.edges.get('to-discount-rule-engine')!;
+    const e2 = layout.edges.get('from-discount-rule-engine')!;
+    expect(e1).toBeDefined();
+    expect(e2).toBeDefined();
+
+    // Ports on compute-discount must NOT coincide
+    // Flow 1 exits from bottom of compute-discount
+    const f1Start = e1.waypoints[0];
+    // Flow 2 enters at bottom of compute-discount
+    const f2End = e2.waypoints[e2.waypoints.length - 1];
+    expect(Math.abs(f1Start.x - f2End.x)).toBeGreaterThan(1);
+
+    // Lines should not fully overlap — at least one waypoint differs
+    const f1Xs = new Set(e1.waypoints.map(w => Math.round(w.x)));
+    const f2Xs = new Set(e2.waypoints.map(w => Math.round(w.x)));
+    const shared = [...f1Xs].filter(x => f2Xs.has(x));
+    expect(shared.length).toBeLessThan(Math.max(f1Xs.size, f2Xs.size));
+  });
+});
