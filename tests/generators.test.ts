@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../src/parser/index.js';
 import { generateIds, toJson, toObject, toBpmnXml, toBpmnXmlAsync, generateLayout, computeEdgeLabelBounds } from '../src/generators/index.js';
+import { computePoolLabelWidth } from '../src/generators/constants.js';
 
 describe('ID Generator', () => {
   it('preserves existing IDs', () => {
@@ -1680,5 +1681,23 @@ describe('computeEdgeLabelBounds', () => {
     );
     expect(bounds.width).toBe(Math.max(30, 'condition text'.length * 7));
     expect(bounds.height).toBe(14);
+  });
+});
+
+describe('computePoolLabelWidth', () => {
+  it('returns minimum 30 for short names', () => {
+    expect(computePoolLabelWidth('HR')).toBe(30);
+    expect(computePoolLabelWidth('')).toBe(30);
+  });
+
+  it('returns > 30 for long pool names', () => {
+    const width = computePoolLabelWidth('Customer Service Department');
+    expect(width).toBeGreaterThan(30);
+    expect(width).toBeLessThanOrEqual(50);
+  });
+
+  it('caps at 50 for very long names', () => {
+    const width = computePoolLabelWidth('A'.repeat(100));
+    expect(width).toBe(50);
   });
 });
