@@ -537,6 +537,46 @@ describe('Layout Generator', () => {
     const laneLayout = layout.elements.get('l1');
     expect(laneLayout).toBeDefined();
   });
+
+  it('normalizes lane widths to match pool width after pool normalization', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Wide Pool"
+    task: t1
+    task: t2
+    task: t3
+    task: t4
+    flow: f1
+      from: t1
+      to: t2
+    flow: f2
+      from: t2
+      to: t3
+    flow: f3
+      from: t3
+      to: t4
+  pool: p2
+    name: "Narrow Pool"
+    lane: l1
+      name: "Lane A"
+      task: t5
+    lane: l2
+      name: "Lane B"
+      task: t6
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const p2 = layout.elements.get('Participant_p2')!;
+    const l1 = layout.elements.get('l1')!;
+    const l2 = layout.elements.get('l2')!;
+
+    // Lanes must match their pool's normalized width minus PADDING on each side
+    expect(l1.width).toBe(p2.width! - 2 * 50); // pool extends CONTAINER_PADDING beyond lanes
+    // Both lanes share same width
+    expect(l1.width).toBe(l2.width);
+  });
 });
 
 describe('Lane Stacking', () => {
