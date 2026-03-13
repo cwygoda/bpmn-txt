@@ -609,8 +609,14 @@ function computeFanOut(
     } else if (i === sorted.length - 1 && peer.cy > nodeCy) {
       // Bottommost peer below node center → bottom edge
       overrides.set(peer.flowId, { x: nodeCx, y: nodeLayout.y! + h });
+    } else {
+      // Middle peers: interpolate along the appropriate vertical edge
+      // Place on right edge (LTR bias) with Y distributed between top and bottom
+      const t = sorted.length > 1 ? i / (sorted.length - 1) : 0.5;
+      const edgeY = nodeLayout.y! + t * h;
+      const edgeX = peer.cx >= nodeCx ? nodeLayout.x! + w : nodeLayout.x!;
+      overrides.set(peer.flowId, { x: edgeX, y: edgeY });
     }
-    // Middle peers: no override, fall through to computeEdgePoint
   }
 
   return overrides;
