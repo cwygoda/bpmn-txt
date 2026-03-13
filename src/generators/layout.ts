@@ -292,10 +292,10 @@ function buildElkGraph(
   // ELK layout options
   const layoutOptions: Record<string, string> = {
     'elk.algorithm': 'layered',
-    'elk.direction': options.direction || 'RIGHT',
-    'elk.spacing.nodeNode': String(options.nodeSpacing || 50),
-    'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing || 100),
-    'elk.spacing.edgeEdge': String(options.edgeSpacing || 20),
+    'elk.direction': options.direction ?? 'RIGHT',
+    'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
+    'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
     'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
     'elk.edgeRouting': 'ORTHOGONAL',
   };

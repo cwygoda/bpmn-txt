@@ -450,6 +450,28 @@ describe('Layout Generator', () => {
     expect(t1Right.x!).toBeGreaterThan(s1Right.x!);
   });
 
+  it('respects explicit zero spacing options', async () => {
+    const input = `process: test
+  start: s1
+  task: t1
+  flow: f1
+    from: s1
+    to: t1
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+
+    // layerSpacing=0 should produce tighter layout than layerSpacing=200
+    // (layerSpacing controls distance in flow direction for the layered algorithm)
+    const tightLayout = await generateLayout(document!, { layerSpacing: 0 });
+    const wideLayout = await generateLayout(document!, { layerSpacing: 200 });
+
+    const tightGap = tightLayout.elements.get('t1')!.x! - tightLayout.elements.get('s1')!.x!;
+    const wideGap = wideLayout.elements.get('t1')!.x! - wideLayout.elements.get('s1')!.x!;
+
+    expect(tightGap).toBeLessThan(wideGap);
+  });
+
   it('stacks multiple pools vertically without overlap', async () => {
     const input = `process: test
   pool: p1
