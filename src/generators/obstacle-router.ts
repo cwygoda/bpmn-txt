@@ -177,10 +177,22 @@ function buildGrid(
   return { nodes, xs, ys };
 }
 
+/** Binary search for exact value in sorted array. Returns index or -1. */
+function bsearch(arr: number[], val: number): number {
+  let lo = 0, hi = arr.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (arr[mid] === val) return mid;
+    if (arr[mid] < val) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -1;
+}
+
 /** Find index in grid for coordinate pair. */
 function coordToIdx(x: number, y: number, xs: number[], ys: number[]): number {
-  const xi = xs.indexOf(x);
-  const yi = ys.indexOf(y);
+  const xi = bsearch(xs, x);
+  const yi = bsearch(ys, y);
   if (xi < 0 || yi < 0) return -1;
   return yi * xs.length + xi;
 }
