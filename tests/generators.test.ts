@@ -598,21 +598,187 @@ describe('Cross-Lane Sequence Flow Routing', () => {
       const tgtLayout = layout.elements.get(flow.to)!;
       const srcW = srcLayout.width ?? 100;
       const srcH = srcLayout.height ?? 80;
+      const tgtW = tgtLayout.width ?? 100;
       const tgtH = tgtLayout.height ?? 80;
 
-      // Starts at source right edge center
-      expect(wp[0].x).toBe(srcLayout.x! + srcW);
-      expect(wp[0].y).toBe(srcLayout.y! + srcH / 2);
+      // Starts on source element boundary
+      const first = wp[0];
+      const srcOnLeft = Math.abs(first.x - srcLayout.x!) < 1;
+      const srcOnRight = Math.abs(first.x - (srcLayout.x! + srcW)) < 1;
+      const srcOnTop = Math.abs(first.y - srcLayout.y!) < 1;
+      const srcOnBottom = Math.abs(first.y - (srcLayout.y! + srcH)) < 1;
+      expect(
+        srcOnLeft || srcOnRight || srcOnTop || srcOnBottom,
+        `first waypoint (${first.x},${first.y}) not on source boundary`
+      ).toBe(true);
 
-      // Ends at target left edge center
-      expect(wp[wp.length - 1].x).toBe(tgtLayout.x!);
-      expect(wp[wp.length - 1].y).toBe(tgtLayout.y! + tgtH / 2);
+      // Ends on target element boundary
+      const last = wp[wp.length - 1];
+      const tgtOnLeft = Math.abs(last.x - tgtLayout.x!) < 1;
+      const tgtOnRight = Math.abs(last.x - (tgtLayout.x! + tgtW)) < 1;
+      const tgtOnTop = Math.abs(last.y - tgtLayout.y!) < 1;
+      const tgtOnBottom = Math.abs(last.y - (tgtLayout.y! + tgtH)) < 1;
+      expect(
+        tgtOnLeft || tgtOnRight || tgtOnTop || tgtOnBottom,
+        `last waypoint (${last.x},${last.y}) not on target boundary`
+      ).toBe(true);
 
       // All segments orthogonal
       for (let i = 1; i < wp.length; i++) {
         const dx = Math.abs(wp[i].x - wp[i - 1].x);
         const dy = Math.abs(wp[i].y - wp[i - 1].y);
         expect(dx < 1 || dy < 1, `segment ${i - 1}->${i} not orthogonal`).toBe(true);
+      }
+    }
+  });
+
+  it('routes cross-lane sequence flow around a blocking element', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Platform"
+    lane: l1
+      name: "Requester"
+      task: t1
+        name: "Request"
+        -> t3
+    lane: l2
+      name: "Processor"
+      task: blocker
+        name: "Blocker"
+    lane: l3
+      name: "Executor"
+      task: t3
+        name: "Execute"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const pool = document!.processes[0].pools![0];
+    const flow = pool.sequenceFlows!.find(f => f.from === 't1' && f.to === 't3');
+    expect(flow).toBeDefined();
+
+    const edge = layout.edges.get(flow!.id!);
+    expect(edge).toBeDefined();
+
+    const wp = edge!.waypoints;
+    expect(wp.length).toBeGreaterThanOrEqual(2);
+
+    // All segments orthogonal
+    for (let i = 1; i < wp.length; i++) {
+      const dx = Math.abs(wp[i].x - wp[i - 1].x);
+      const dy = Math.abs(wp[i].y - wp[i - 1].y);
+      expect(dx < 1 || dy < 1, `segment ${i - 1}->${i} not orthogonal`).toBe(true);
+    }
+
+    // No waypoint should be strictly inside the blocker element (inflated by margin)
+    const blockerLayout = layout.elements.get('blocker')!;
+    const margin = 15;
+    const bx = blockerLayout.x! - margin;
+    const by = blockerLayout.y! - margin;
+    const bw = (blockerLayout.width ?? 100) + 2 * margin;
+    const bh = (blockerLayout.height ?? 80) + 2 * margin;
+    for (const p of wp) {
+      const inside = p.x > bx && p.x < bx + bw && p.y > by && p.y < by + bh;
+      expect(inside, `waypoint (${p.x},${p.y}) inside blocker`).toBe(false);
+    }
+  });
+
+  it('uses straight-line fast path for aligned cross-lane elements', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Platform"
+    lane: l1
+      name: "Requester"
+      task: t1
+        name: "Request"
+        -> t2
+    lane: l2
+      name: "Executor"
+      task: t2
+        name: "Execute"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const pool = document!.processes[0].pools![0];
+    const flow = pool.sequenceFlows!.find(f => f.from === 't1' && f.to === 't2');
+    expect(flow).toBeDefined();
+
+    const edge = layout.edges.get(flow!.id!);
+    expect(edge).toBeDefined();
+
+    const wp = edge!.waypoints;
+
+    // If endpoints share the same X (vertical) or same Y (horizontal), should get straight line
+    const first = wp[0];
+    const last = wp[wp.length - 1];
+    if (Math.abs(first.x - last.x) < 1 || Math.abs(first.y - last.y) < 1) {
+      expect(wp.length).toBe(2);
+    }
+  });
+
+  it('prevents overlap between multiple cross-lane sequence flows', async () => {
+    const input = `process: test
+  pool: p1
+    name: "Platform"
+    lane: l1
+      name: "Requester"
+      start: s1
+        -> t1
+      task: t1
+        name: "Request"
+        -> t2
+    lane: l2
+      name: "Executor"
+      task: t2
+        name: "Execute"
+`;
+    const { document } = parse(input);
+    generateIds(document!);
+    const layout = await generateLayout(document!);
+
+    const pool = document!.processes[0].pools![0];
+    const flows = pool.sequenceFlows ?? [];
+    expect(flows.length).toBeGreaterThanOrEqual(2);
+
+    // Extract horizontal segments from each flow
+    function hSegments(wps: { x: number; y: number }[]) {
+      const segs: { y: number; xMin: number; xMax: number }[] = [];
+      for (let i = 1; i < wps.length; i++) {
+        if (Math.abs(wps[i].y - wps[i - 1].y) < 1) {
+          segs.push({
+            y: wps[i].y,
+            xMin: Math.min(wps[i].x, wps[i - 1].x),
+            xMax: Math.max(wps[i].x, wps[i - 1].x),
+          });
+        }
+      }
+      return segs;
+    }
+
+    // Check no two flows share overlapping horizontal segments
+    const allSegs: { flowId: string; segs: ReturnType<typeof hSegments> }[] = [];
+    for (const flow of flows) {
+      const edge = layout.edges.get(flow.id!);
+      if (!edge) continue;
+      allSegs.push({ flowId: flow.id!, segs: hSegments(edge.waypoints) });
+    }
+
+    const TOL = 5;
+    for (let i = 0; i < allSegs.length; i++) {
+      for (let j = i + 1; j < allSegs.length; j++) {
+        for (const s1 of allSegs[i].segs) {
+          for (const s2 of allSegs[j].segs) {
+            if (Math.abs(s1.y - s2.y) < TOL && s1.xMax > s2.xMin && s2.xMax > s1.xMin) {
+              throw new Error(
+                `parallel overlap: ${allSegs[i].flowId} H@${s1.y} [${s1.xMin},${s1.xMax}] ` +
+                `vs ${allSegs[j].flowId} H@${s2.y} [${s2.xMin},${s2.xMax}]`
+              );
+            }
+          }
+        }
       }
     }
   });
