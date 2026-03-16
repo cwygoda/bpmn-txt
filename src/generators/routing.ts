@@ -1,11 +1,25 @@
 import type { Process, Pool, MessageFlow, Layout, Waypoint } from '../ast/types.js';
 import type { LayoutResult } from './layout.js';
 import { collectFromPool } from './utils.js';
-import { OBSTACLE_MARGIN, computePoolLabelWidth } from './constants.js';
+import {
+  OBSTACLE_MARGIN,
+  DEFAULT_ELEMENT_WIDTH,
+  DEFAULT_ELEMENT_HEIGHT,
+  ELEMENT_SIZES,
+  EXIT_STUB,
+  ZSHAPE_EXTRA_MARGIN,
+  PORT_SPREAD_RATIO,
+  POOL_EDGE_MARGIN,
+  USHAPE_BASE_OFFSET,
+  USHAPE_FLOW_INCREMENT,
+  SNAP_TOLERANCE,
+  DEDUP_TOLERANCE,
+  MIN_GAP_STUB,
+  GAP_STUB_DIVISOR,
+  computePoolLabelWidth,
+} from './constants.js';
 import { findOrthogonalPath, waypointsToSegments, type Rect, type Segment } from './obstacle-router.js';
 
-/** Distance of the perpendicular stub from element edge before A* routing. */
-const EXIT_STUB = 20;
 
 /**
  * Count how many Z-shape segments intersect obstacles for a given midpoint.
@@ -45,7 +59,7 @@ function findBestZMid(
   if (naiveHits === 0) return naive;
 
   // Collect obstacle-edge candidates (just outside each obstacle)
-  const margin = OBSTACLE_MARGIN + 5;
+  const margin = OBSTACLE_MARGIN + ZSHAPE_EXTRA_MARGIN;
   const candidates: number[] = [];
   for (const r of obstacles) {
     if (axis === 'x') {
@@ -83,8 +97,8 @@ function simplifyWaypoints(wps: Waypoint[]): Waypoint[] {
     const prev = out[out.length - 1];
     const curr = wps[i];
     const next = wps[i + 1];
-    const sameX = Math.abs(prev.x - curr.x) < 0.5 && Math.abs(curr.x - next.x) < 0.5;
-    const sameY = Math.abs(prev.y - curr.y) < 0.5 && Math.abs(curr.y - next.y) < 0.5;
+    const sameX = Math.abs(prev.x - curr.x) < SNAP_TOLERANCE && Math.abs(curr.x - next.x) < SNAP_TOLERANCE;
+    const sameY = Math.abs(prev.y - curr.y) < SNAP_TOLERANCE && Math.abs(curr.y - next.y) < SNAP_TOLERANCE;
     if (sameX || sameY) continue;
     out.push(curr);
   }
@@ -128,7 +142,7 @@ function dedup(waypoints: Waypoint[]): Waypoint[] {
   const out: Waypoint[] = [];
   for (const wp of waypoints) {
     const prev = out[out.length - 1];
-    if (prev && Math.abs(prev.x - wp.x) < 1 && Math.abs(prev.y - wp.y) < 1) continue;
+    if (prev && Math.abs(prev.x - wp.x) < DEDUP_TOLERANCE && Math.abs(prev.y - wp.y) < DEDUP_TOLERANCE) continue;
     out.push(wp);
   }
   return out;
@@ -143,8 +157,8 @@ function computeEdgePoint(
   targetX: number,
   targetY: number
 ): { x: number; y: number } {
-  const w = layout.width ?? 100;
-  const h = layout.height ?? 80;
+  const w = layout.width ?? DEFAULT_ELEMENT_WIDTH;
+  const h = layout.height ?? DEFAULT_ELEMENT_HEIGHT;
   const cx = layout.x! + w / 2;
   const cy = layout.y! + h / 2;
   const normDx = Math.abs(targetX - cx) / (w / 2);
@@ -166,13 +180,13 @@ function computeStub(
   edgePoint: { x: number; y: number },
   stubLength: number
 ): { x: number; y: number } {
-  const w = layout.width ?? 100;
-  const h = layout.height ?? 80;
+  const w = layout.width ?? DEFAULT_ELEMENT_WIDTH;
+  const h = layout.height ?? DEFAULT_ELEMENT_HEIGHT;
 
-  const onRight = Math.abs(edgePoint.x - (layout.x! + w)) < 1;
-  const onLeft = Math.abs(edgePoint.x - layout.x!) < 1;
-  const onBottom = Math.abs(edgePoint.y - (layout.y! + h)) < 1;
-  const onTop = Math.abs(edgePoint.y - layout.y!) < 1;
+  const onRight = Math.abs(edgePoint.x - (layout.x! + w)) < DEDUP_TOLERANCE;
+  const onLeft = Math.abs(edgePoint.x - layout.x!) < DEDUP_TOLERANCE;
+  const onBottom = Math.abs(edgePoint.y - (layout.y! + h)) < DEDUP_TOLERANCE;
+  const onTop = Math.abs(edgePoint.y - layout.y!) < DEDUP_TOLERANCE;
 
   if (onRight) return { x: edgePoint.x + stubLength, y: edgePoint.y };
   if (onLeft) return { x: edgePoint.x - stubLength, y: edgePoint.y };
@@ -206,8 +220,8 @@ function collectObstacles(
     obstacles.push({
       x: layout.x,
       y: layout.y,
-      width: layout.width ?? 100,
-      height: layout.height ?? 80,
+      width: layout.width ?? DEFAULT_ELEMENT_WIDTH,
+      height: layout.height ?? DEFAULT_ELEMENT_HEIGHT,
     });
   }
   return obstacles;
@@ -228,7 +242,7 @@ function collectExistingSegments(result: LayoutResult): Segment[] {
  * Check if a vertical straight line from src to tgt is clear of inflated obstacles.
  */
 function isVerticalLineClear(src: Waypoint, tgt: Waypoint, obstacles: Rect[]): boolean {
-  if (Math.abs(src.x - tgt.x) > 1) return false;
+  if (Math.abs(src.x - tgt.x) > DEDUP_TOLERANCE) return false;
   const x = src.x;
   const minY = Math.min(src.y, tgt.y);
   const maxY = Math.max(src.y, tgt.y);
@@ -250,7 +264,7 @@ function isVerticalLineClear(src: Waypoint, tgt: Waypoint, obstacles: Rect[]): b
  * Check if a horizontal straight line from src to tgt is clear of inflated obstacles.
  */
 function isHorizontalLineClear(src: Waypoint, tgt: Waypoint, obstacles: Rect[]): boolean {
-  if (Math.abs(src.y - tgt.y) > 1) return false;
+  if (Math.abs(src.y - tgt.y) > DEDUP_TOLERANCE) return false;
   const y = src.y;
   const minX = Math.min(src.x, tgt.x);
   const maxX = Math.max(src.x, tgt.x);
@@ -375,18 +389,18 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     for (const [elemId, layout] of result.elements) {
       if (elemId.startsWith('Participant_') || elemId.startsWith('Lane_')) continue;
       if (layout.x === undefined || layout.y === undefined) continue;
-      const w = layout.width ?? 100;
-      const h = layout.height ?? 80;
+      const w = layout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const h = layout.height ?? DEFAULT_ELEMENT_HEIGHT;
 
       for (const pt of [wp[0], wp[wp.length - 1]]) {
         // On top edge?
-        if (Math.abs(pt.y - layout.y) < 1 && pt.x >= layout.x && pt.x <= layout.x + w) {
+        if (Math.abs(pt.y - layout.y) < DEDUP_TOLERANCE && pt.x >= layout.x && pt.x <= layout.x + w) {
           const key = `${elemId}:top`;
           if (!portSlots.has(key)) portSlots.set(key, []);
           portSlots.get(key)!.push(`__seq_${edgeId}`);
         }
         // On bottom edge?
-        if (Math.abs(pt.y - (layout.y + h)) < 1 && pt.x >= layout.x && pt.x <= layout.x + w) {
+        if (Math.abs(pt.y - (layout.y + h)) < DEDUP_TOLERANCE && pt.x >= layout.x && pt.x <= layout.x + w) {
           const key = `${elemId}:bottom`;
           if (!portSlots.has(key)) portSlots.set(key, []);
           portSlots.get(key)!.push(`__seq_${edgeId}`);
@@ -424,7 +438,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     if (!slots || slots.length <= 1) return 0;
     const idx = slots.indexOf(flowId);
     const count = slots.length;
-    const spread = elementWidth * 0.5;
+    const spread = elementWidth * PORT_SPREAD_RATIO;
     return -spread / 2 + idx * spread / (count - 1);
   }
 
@@ -452,8 +466,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         ?? (poolIds.has(flow.from) ? result.elements.get(`Participant_${flow.from}`) : undefined);
       const tgtLayout = result.elements.get(flow.to)
         ?? (poolIds.has(flow.to) ? result.elements.get(`Participant_${flow.to}`) : undefined);
-      const srcW = srcLayout?.width ?? 100;
-      const tgtW = tgtLayout?.width ?? 100;
+      const srcW = srcLayout?.width ?? DEFAULT_ELEMENT_WIDTH;
+      const tgtW = tgtLayout?.width ?? DEFAULT_ELEMENT_WIDTH;
       const srcCenterX = (srcLayout?.x ?? 0) + srcW / 2;
       const tgtCenterX = (tgtLayout?.x ?? 0) + tgtW / 2;
       return { flow, srcCenterX, tgtCenterX, avgX: (srcCenterX + tgtCenterX) / 2 };
@@ -470,10 +484,10 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
       if (!srcLayout || !tgtLayout) continue;
 
       const srcPool = elementToPool.get(flow.from)!;
-      const srcW = srcLayout.width ?? 100;
-      const srcH = srcLayout.height ?? 80;
-      const tgtW = tgtLayout.width ?? 100;
-      const tgtH = tgtLayout.height ?? 80;
+      const srcW = srcLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const srcH = srcLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
+      const tgtW = tgtLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const tgtH = tgtLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
       const srcIsInUpperPool = (srcPool === firstSrcPool) === aAbove;
 
       const srcSide = srcIsInUpperPool ? 'bottom' : 'top';
@@ -531,7 +545,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const tgtPoolObj = poolById.get(tgtPoolId);
 
         // Cap stub length to gap/3 so stubs from both pools don't overlap
-        const gapStub = Math.min(EXIT_STUB, Math.max(gapHeight / 3, 5));
+        const gapStub = Math.min(EXIT_STUB, Math.max(gapHeight / GAP_STUB_DIVISOR, MIN_GAP_STUB));
 
         // Pool boundary Y at the gap edge
         const srcPoolEdgeY = srcIsInUpperPool ? gapTop : gapBottom;
@@ -554,7 +568,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           const stubDir = srcIsInUpperPool ? 1 : -1;
           const srcStub: Waypoint = { x: srcCenterX, y: srcY + stubDir * gapStub };
           const edgeStub: Waypoint = { x: srcCenterX, y: srcPoolEdgeY - stubDir * gapStub };
-          const path = findOrthogonalPath(srcStub, edgeStub, srcPoolObstacles, routedSegments, []);
+          const path = findOrthogonalPath(srcStub, edgeStub, srcPoolObstacles, routedSegments, [], 'V');
           escapeWps = path ? simplifyWaypoints([src, ...path]) : [src];
         }
 
@@ -567,7 +581,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           const stubDir = srcIsInUpperPool ? 1 : -1;
           const edgeStub: Waypoint = { x: tgtCenterX, y: tgtPoolEdgeY + stubDir * gapStub };
           const tgtStub: Waypoint = { x: tgtCenterX, y: tgtY - stubDir * gapStub };
-          const path = findOrthogonalPath(edgeStub, tgtStub, tgtPoolObstacles, routedSegments, []);
+          const path = findOrthogonalPath(edgeStub, tgtStub, tgtPoolObstacles, routedSegments, [], 'V');
           entryWps = path ? simplifyWaypoints([...path, tgt]) : [tgt];
         }
 
@@ -575,7 +589,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const escapeEndX = escapeWps[escapeWps.length - 1].x;
         const entryStartX = entryWps[0].x;
 
-        if (Math.abs(escapeEndX - entryStartX) < 1) {
+        if (Math.abs(escapeEndX - entryStartX) < DEDUP_TOLERANCE) {
           // Same X: straight vertical through gap
           waypoints = simplifyWaypoints(dedup([
             ...escapeWps,
@@ -602,7 +616,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const stubDir = srcIsInUpperPool ? 1 : -1;
         const srcStub: Waypoint = { x: srcCenterX, y: srcY + stubDir * EXIT_STUB };
         const tgtStub: Waypoint = { x: tgtCenterX, y: tgtY - stubDir * EXIT_STUB };
-        const astarPath = findOrthogonalPath(srcStub, tgtStub, obstacles, routedSegments, gridHints);
+        const astarPath = findOrthogonalPath(srcStub, tgtStub, obstacles, routedSegments, gridHints, 'V');
         if (astarPath) {
           waypoints = simplifyWaypoints([src, ...astarPath, tgt]);
         }
@@ -612,14 +626,13 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           const srcPLayout = result.elements.get(`Participant_${elementToPool.get(flow.from)}`)!;
           const tgtPLayout = result.elements.get(`Participant_${elementToPool.get(flow.to)}`)!;
 
-          const POOL_EDGE_MARGIN = 15;
           const tgtEdgeY = srcIsInUpperPool
             ? tgtPLayout.y! - POOL_EDGE_MARGIN
             : tgtPLayout.y! + tgtPLayout.height! + POOL_EDGE_MARGIN;
 
-          const routeX = maxRight + 40 + i * 20;
+          const routeX = maxRight + USHAPE_BASE_OFFSET + i * USHAPE_FLOW_INCREMENT;
           const srcEdge = computeEdgePoint(srcLayout, routeX, tgtEdgeY);
-          const isHorizontalExit = Math.abs(srcEdge.y - (srcLayout.y! + srcH / 2)) < 1;
+          const isHorizontalExit = Math.abs(srcEdge.y - (srcLayout.y! + srcH / 2)) < DEDUP_TOLERANCE;
 
           if (isHorizontalExit) {
             waypoints = dedup([
@@ -674,8 +687,8 @@ function computeFanOut(
   const overrides = new Map<string, { x: number; y: number }>();
   if (peers.length < 2) return overrides;
 
-  const w = nodeLayout.width ?? 100;
-  const h = nodeLayout.height ?? 80;
+  const w = nodeLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+  const h = nodeLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
   const nodeCx = nodeLayout.x! + w / 2;
   const nodeCy = nodeLayout.y! + h / 2;
 
@@ -709,6 +722,9 @@ function computeFanOut(
 
   // When all peers land on a single horizontal edge and Y-spread is significant,
   // redistribute extreme peers to top/bottom for BPMN-style gateway fan-out.
+  // Only redistribute if the peer has meaningful vertical component (ratio >= 0.5,
+  // roughly 27° from horizontal) to avoid forcing nearly-horizontal peers to top/bottom.
+  const MIN_REDISTRIBUTION_RATIO = 0.5;
   if (edgeGroups.size === 1) {
     const [onlyEdge, group] = [...edgeGroups.entries()][0];
     if (onlyEdge === 'left' || onlyEdge === 'right') {
@@ -716,13 +732,18 @@ function computeFanOut(
       const topPeer = sorted[0];
       const botPeer = sorted[sorted.length - 1];
 
-      if (topPeer.cy < nodeCy && sorted.length > 1) {
+      const topNormDy = Math.abs(topPeer.cy - nodeCy) / (h / 2);
+      const topNormDx = Math.abs(topPeer.cx - nodeCx) / (w / 2);
+      const botNormDy = Math.abs(botPeer.cy - nodeCy) / (h / 2);
+      const botNormDx = Math.abs(botPeer.cx - nodeCx) / (w / 2);
+
+      if (topPeer.cy < nodeCy && sorted.length > 1 && (topNormDx === 0 || topNormDy / topNormDx >= MIN_REDISTRIBUTION_RATIO)) {
         group.splice(group.indexOf(topPeer), 1);
         const topGroup = edgeGroups.get('top') ?? [];
         topGroup.push(topPeer);
         edgeGroups.set('top', topGroup);
       }
-      if (botPeer.cy > nodeCy && group.length > 0) {
+      if (botPeer.cy > nodeCy && group.length > 0 && (botNormDx === 0 || botNormDy / botNormDx >= MIN_REDISTRIBUTION_RATIO)) {
         group.splice(group.indexOf(botPeer), 1);
         const botGroup = edgeGroups.get('bottom') ?? [];
         botGroup.push(botPeer);
@@ -778,8 +799,8 @@ function collectPoolObstacles(
     obstacles.push({
       x: layout.x,
       y: layout.y,
-      width: layout.width ?? 100,
-      height: layout.height ?? 80,
+      width: layout.width ?? DEFAULT_ELEMENT_WIDTH,
+      height: layout.height ?? DEFAULT_ELEMENT_HEIGHT,
     });
 
     // Boundary events attached to this element
@@ -791,8 +812,8 @@ function collectPoolObstacles(
         obstacles.push({
           x: beLayout.x,
           y: beLayout.y,
-          width: beLayout.width ?? 36,
-          height: beLayout.height ?? 36,
+          width: beLayout.width ?? ELEMENT_SIZES.boundaryEvent.width,
+          height: beLayout.height ?? ELEMENT_SIZES.boundaryEvent.height,
         });
       }
     }
@@ -867,8 +888,8 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
     for (const flow of sortedFlows) {
       const tgtLayout = result.elements.get(flow.to!);
       if (!tgtLayout) continue;
-      const tgtW = tgtLayout.width ?? 100;
-      const tgtH = tgtLayout.height ?? 80;
+      const tgtW = tgtLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const tgtH = tgtLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
       const peers = bySource.get(flow.from!) ?? [];
       peers.push({ flowId: flow.id!, cx: tgtLayout.x! + tgtW / 2, cy: tgtLayout.y! + tgtH / 2 });
       bySource.set(flow.from!, peers);
@@ -886,8 +907,8 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
     for (const flow of sortedFlows) {
       const srcLayout = result.elements.get(flow.from!);
       if (!srcLayout) continue;
-      const srcW = srcLayout.width ?? 100;
-      const srcH = srcLayout.height ?? 80;
+      const srcW = srcLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const srcH = srcLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
       const peers = byTarget.get(flow.to!) ?? [];
       peers.push({ flowId: flow.id!, cx: srcLayout.x! + srcW / 2, cy: srcLayout.y! + srcH / 2 });
       byTarget.set(flow.to!, peers);
@@ -905,10 +926,10 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
       const tgtLayout = result.elements.get(flow.to!);
       if (!srcLayout || !tgtLayout) continue;
 
-      const srcW = srcLayout.width ?? 100;
-      const srcH = srcLayout.height ?? 80;
-      const tgtW = tgtLayout.width ?? 100;
-      const tgtH = tgtLayout.height ?? 80;
+      const srcW = srcLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const srcH = srcLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
+      const tgtW = tgtLayout.width ?? DEFAULT_ELEMENT_WIDTH;
+      const tgtH = tgtLayout.height ?? DEFAULT_ELEMENT_HEIGHT;
 
       // Smart edge selection: use fan-out override or pick best cardinal edge
       const srcCx = srcLayout.x! + srcW / 2;
@@ -952,12 +973,16 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
           { x: tgtLayout.x!, y: tgtLayout.y!, width: tgtW, height: tgtH },
         ];
 
+        // Determine stub direction from edge→stub vector
+        const stubDir: 'H' | 'V' = Math.abs(srcStub.y - src.y) < SNAP_TOLERANCE ? 'H' : 'V';
+
         const astarPath = findOrthogonalPath(
           { x: srcStub.x, y: srcStub.y },
           { x: tgtStub.x, y: tgtStub.y },
           astarObstacles,
           routedSegments,
-          gridHints
+          gridHints,
+          stubDir
         );
         if (astarPath) {
           waypoints = simplifyWaypoints([src, ...astarPath, tgt]);
@@ -966,12 +991,12 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
 
       // 3. Directional Z-shape fallback
       if (!waypoints) {
-        const srcIsHExit = Math.abs(src.y - srcCy) < 1;
-        const tgtIsHEntry = Math.abs(tgt.y - tgtCy) < 1;
+        const srcIsHExit = Math.abs(src.y - srcCy) < DEDUP_TOLERANCE;
+        const tgtIsHEntry = Math.abs(tgt.y - tgtCy) < DEDUP_TOLERANCE;
 
         if (srcIsHExit && tgtIsHEntry) {
           // Both horizontal: H→V→H Z-shape
-          if (Math.abs(src.y - tgt.y) < 1) {
+          if (Math.abs(src.y - tgt.y) < DEDUP_TOLERANCE) {
             waypoints = [src, tgt];
           } else {
             const midX = findBestZMid(src, tgt, 'x', obstacles);
@@ -979,7 +1004,7 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
           }
         } else if (!srcIsHExit && !tgtIsHEntry) {
           // Both vertical: V→H→V Z-shape
-          if (Math.abs(src.x - tgt.x) < 1) {
+          if (Math.abs(src.x - tgt.x) < DEDUP_TOLERANCE) {
             waypoints = [src, tgt];
           } else {
             const midY = findBestZMid(src, tgt, 'y', obstacles);

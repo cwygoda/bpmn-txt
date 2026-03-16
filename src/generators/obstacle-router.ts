@@ -1,5 +1,5 @@
 import type { Waypoint } from '../ast/types.js';
-import { OBSTACLE_MARGIN, BEND_PENALTY, PARALLEL_TOLERANCE } from './constants.js';
+import { OBSTACLE_MARGIN, BEND_PENALTY, PARALLEL_TOLERANCE, SNAP_TOLERANCE } from './constants.js';
 
 export interface Rect {
   x: number;
@@ -41,7 +41,7 @@ function edgeCrossesObstacle(
   obstacles: Rect[]
 ): boolean {
   // Only orthogonal edges — check midpoint and intermediate points
-  if (Math.abs(ax - bx) < 0.5) {
+  if (Math.abs(ax - bx) < SNAP_TOLERANCE) {
     // Vertical edge
     const x = ax;
     const minY = Math.min(ay, by);
@@ -67,8 +67,8 @@ function edgeCrossesObstacle(
 
 /** Classify a segment as H(orizontal), V(ertical), or null (point). */
 function segDir(s: Segment): Dir {
-  if (Math.abs(s.y1 - s.y2) < 0.5) return 'H';
-  if (Math.abs(s.x1 - s.x2) < 0.5) return 'V';
+  if (Math.abs(s.y1 - s.y2) < SNAP_TOLERANCE) return 'H';
+  if (Math.abs(s.x1 - s.x2) < SNAP_TOLERANCE) return 'V';
   return null;
 }
 
@@ -208,7 +208,8 @@ function astar(
   startIdx: number,
   endIdx: number,
   obstacles: Rect[],
-  existingSegments: Segment[]
+  existingSegments: Segment[],
+  initialDir?: Dir
 ): Waypoint[] | null {
   const cols = xs.length;
   const n = nodes.length;
@@ -270,7 +271,7 @@ function astar(
     g: 0,
     f: heuristic(startIdx),
     parent: -1,
-    dir: null,
+    dir: initialDir ?? null,
   };
   heapPush(startNode);
   best[startIdx] = 0;
@@ -311,7 +312,7 @@ function astar(
       if (edgeOverlapsExisting(cx, cy, nx, ny, existingSegments, PARALLEL_TOLERANCE)) continue;
 
       const dist = Math.abs(nx - cx) + Math.abs(ny - cy);
-      const moveDir: Dir = Math.abs(ny - cy) < 0.5 ? 'H' : 'V';
+      const moveDir: Dir = Math.abs(ny - cy) < SNAP_TOLERANCE ? 'H' : 'V';
       const bend = current.dir !== null && current.dir !== moveDir ? BEND_PENALTY : 0;
       const tentG = current.g + dist + bend;
 
@@ -341,8 +342,8 @@ function simplifyPath(path: Waypoint[]): Waypoint[] {
     const curr = path[i];
     const next = path[i + 1];
 
-    const sameX = Math.abs(prev.x - curr.x) < 0.5 && Math.abs(curr.x - next.x) < 0.5;
-    const sameY = Math.abs(prev.y - curr.y) < 0.5 && Math.abs(curr.y - next.y) < 0.5;
+    const sameX = Math.abs(prev.x - curr.x) < SNAP_TOLERANCE && Math.abs(curr.x - next.x) < SNAP_TOLERANCE;
+    const sameY = Math.abs(prev.y - curr.y) < SNAP_TOLERANCE && Math.abs(curr.y - next.y) < SNAP_TOLERANCE;
 
     // Skip if collinear
     if (sameX || sameY) continue;
@@ -367,7 +368,8 @@ export function findOrthogonalPath(
   tgt: Waypoint,
   obstacles: Rect[],
   existing: Segment[],
-  gridHints: Waypoint[] = []
+  gridHints: Waypoint[] = [],
+  initialDir?: 'H' | 'V'
 ): Waypoint[] | null {
   // Inflate obstacles
   const inflated = obstacles.map(r => inflate(r, OBSTACLE_MARGIN));
@@ -376,7 +378,7 @@ export function findOrthogonalPath(
   const startIdx = coordToIdx(src.x, src.y, xs, ys);
   const endIdx = coordToIdx(tgt.x, tgt.y, xs, ys);
 
-  const path = astar(nodes, xs, ys, startIdx, endIdx, inflated, existing);
+  const path = astar(nodes, xs, ys, startIdx, endIdx, inflated, existing, initialDir);
   if (!path) return null;
 
   return simplifyPath(path);

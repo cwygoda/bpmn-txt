@@ -10,7 +10,16 @@ import type {
   Layout,
   Waypoint,
 } from '../ast/types.js';
-import { ELEMENT_SIZES } from './constants.js';
+import {
+  ELEMENT_SIZES,
+  DEFAULT_ELEMENT_WIDTH,
+  DEFAULT_ELEMENT_HEIGHT,
+  POOL_GAP,
+  CONTAINER_PADDING,
+  MIN_FLOW_SPACING,
+  ELK_EDGE_NODE_SPACING,
+  ELK_SUBPROCESS_PADDING,
+} from './constants.js';
 import { collectFromProcess, collectFromPool, collectPoolsAndLanes, collectAllElements, type CollectedElements } from './utils.js';
 import { routeMessageFlows, routePoolSequenceFlows } from './routing.js';
 
@@ -67,9 +76,6 @@ export async function generateLayout(
   return result;
 }
 
-const POOL_GAP = 80;
-const CONTAINER_PADDING = 50;
-const MIN_FLOW_SPACING = 20;
 
 async function layoutProcess(
   process: Process,
@@ -328,10 +334,10 @@ function buildElkChildren(
           'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
           'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
           'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
-          'elk.spacing.edgeNode': '20',
+          'elk.spacing.edgeNode': String(ELK_EDGE_NODE_SPACING),
           'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
           'elk.edgeRouting': 'ORTHOGONAL',
-          'elk.padding': '[top=40,left=15,bottom=15,right=15]',
+          'elk.padding': ELK_SUBPROCESS_PADDING,
         },
         children: nested.children,
         edges: nested.edges,
@@ -339,7 +345,7 @@ function buildElkChildren(
 
       children.push(subNode);
     } else {
-      const size = ELEMENT_SIZES[elem.type] || { width: 100, height: 80 };
+      const size = ELEMENT_SIZES[elem.type] || { width: DEFAULT_ELEMENT_WIDTH, height: DEFAULT_ELEMENT_HEIGHT };
 
       const node: ElkNode = {
         id: elem.id,
@@ -385,7 +391,7 @@ function buildElkGraph(
     'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
     'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
     'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
-    'elk.spacing.edgeNode': '20',
+    'elk.spacing.edgeNode': String(ELK_EDGE_NODE_SPACING),
     'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
     'elk.edgeRouting': 'ORTHOGONAL',
   };
@@ -584,8 +590,8 @@ function computeBoundsForElements(
     if (!layout || layout.x === undefined || layout.y === undefined) continue;
 
     found = true;
-    const w = layout.width ?? ELEMENT_SIZES[elem.type]?.width ?? 100;
-    const h = layout.height ?? ELEMENT_SIZES[elem.type]?.height ?? 80;
+    const w = layout.width ?? ELEMENT_SIZES[elem.type]?.width ?? DEFAULT_ELEMENT_WIDTH;
+    const h = layout.height ?? ELEMENT_SIZES[elem.type]?.height ?? DEFAULT_ELEMENT_HEIGHT;
 
     minX = Math.min(minX, layout.x);
     minY = Math.min(minY, layout.y);
