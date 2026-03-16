@@ -15,6 +15,7 @@ import {
   DEFAULT_ELEMENT_WIDTH,
   DEFAULT_ELEMENT_HEIGHT,
   POOL_GAP,
+  POOL_EDGE_MARGIN,
   CONTAINER_PADDING,
   MIN_FLOW_SPACING,
   ELK_EDGE_NODE_SPACING,
@@ -183,6 +184,51 @@ async function layoutProcess(
   }
 
   routeMessageFlows(process, result);
+
+  // Expand all pools horizontally if any edge waypoint exceeds the current
+  // pool extent. Non-adjacent message flows route along inflated obstacle
+  // boundaries which sit right on the pool edge — add POOL_EDGE_MARGIN
+  // so pool borders remain clearly visible around the route.
+  if (process.pools && process.pools.length > 1) {
+    let poolLeft = Infinity;
+    let poolRight = -Infinity;
+    for (const pool of process.pools) {
+      if (!pool.id) continue;
+      const layout = result.elements.get(`Participant_${pool.id}`);
+      if (layout?.x !== undefined && layout.width) {
+        poolLeft = Math.min(poolLeft, layout.x);
+        poolRight = Math.max(poolRight, layout.x + layout.width);
+      }
+    }
+    let expandRight = poolRight;
+    let expandLeft = poolLeft;
+    for (const [, edge] of result.edges) {
+      for (const wp of edge.waypoints) {
+        expandRight = Math.max(expandRight, wp.x + POOL_EDGE_MARGIN);
+        expandLeft = Math.min(expandLeft, wp.x - POOL_EDGE_MARGIN);
+      }
+    }
+    if (expandLeft < poolLeft || expandRight > poolRight) {
+      const newWidth = expandRight - expandLeft;
+      for (const pool of process.pools) {
+        if (!pool.id) continue;
+        const layout = result.elements.get(`Participant_${pool.id}`);
+        if (!layout) continue;
+        layout.x = expandLeft;
+        layout.width = newWidth;
+        if (pool.lanes) {
+          for (const lane of pool.lanes) {
+            if (!lane.id) continue;
+            const laneLayout = result.elements.get(lane.id);
+            if (!laneLayout) continue;
+            laneLayout.x = expandLeft + CONTAINER_PADDING;
+            laneLayout.width = newWidth - 2 * CONTAINER_PADDING;
+          }
+        }
+      }
+    }
+  }
+
   return result;
 }
 
