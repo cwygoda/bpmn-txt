@@ -20,7 +20,7 @@ import type {
 } from '../ast/types.js';
 import { generateIds } from './id-generator.js';
 import { generateLayout, applyLayout, type LayoutResult, type LayoutOptions } from './layout.js';
-import { ELEMENT_SIZES } from './constants.js';
+import { ELEMENT_SIZES, LABEL_OFFSET } from './constants.js';
 import { collectFromProcess, collectAllElements, collectFromPool, collectPoolsAndLanes } from './utils.js';
 
 const BPMN_NS = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
@@ -1036,7 +1036,7 @@ export function computeEdgeLabelBounds(
 ): { x: number; y: number; width: number; height: number } {
   const labelW = Math.max(30, text.length * 7);
   const labelH = 14;
-  const OFFSET = 10; // perpendicular offset from edge
+  const OFFSET = LABEL_OFFSET;
 
   if (waypoints.length < 2) {
     return { x: 0, y: 0, width: labelW, height: labelH };
