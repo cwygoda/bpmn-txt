@@ -628,10 +628,12 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
 /**
  * Compute fan-out edge points for a node with multiple peers (e.g. gateway outputs).
  *
- * When a node connects to 2+ peers spread vertically, the topmost peer exits/enters
- * via the top edge and the bottommost via the bottom edge, producing cleaner routes
- * than the default aspect-ratio-based `computeEdgePoint` which biases toward
- * the horizontal axis in LTR layouts.
+ * For each peer, picks the best exit/entry edge based on direction:
+ * - Primarily horizontal peers (dx > dy, aspect-normalized) → left/right edge
+ * - Primarily vertical peers (dy > dx, aspect-normalized) → top/bottom edge
+ *
+ * When multiple peers share the same edge, their ports are spread evenly
+ * along that edge to prevent overlap.
  */
 function computeFanOut(
   nodeLayout: Layout,
@@ -650,24 +652,47 @@ function computeFanOut(
   const ySpan = Math.max(...ys) - Math.min(...ys);
   if (ySpan < h / 2) return overrides;
 
-  // Sort by Y to identify topmost/bottommost
-  const sorted = [...peers].sort((a, b) => a.cy - b.cy);
+  // Assign each peer to a cardinal edge based on aspect-normalized direction
+  type Edge = 'top' | 'bottom' | 'left' | 'right';
+  const edgeGroups = new Map<Edge, typeof peers>();
 
-  for (let i = 0; i < sorted.length; i++) {
-    const peer = sorted[i];
-    if (i === 0 && peer.cy < nodeCy) {
-      // Topmost peer above node center → top edge
-      overrides.set(peer.flowId, { x: nodeCx, y: nodeLayout.y! });
-    } else if (i === sorted.length - 1 && peer.cy > nodeCy) {
-      // Bottommost peer below node center → bottom edge
-      overrides.set(peer.flowId, { x: nodeCx, y: nodeLayout.y! + h });
+  for (const peer of peers) {
+    const dx = peer.cx - nodeCx;
+    const dy = peer.cy - nodeCy;
+    // Normalize by half-dimensions so a square node has equal bias
+    const normDx = Math.abs(dx) / (w / 2);
+    const normDy = Math.abs(dy) / (h / 2);
+
+    let edge: Edge;
+    if (normDx >= normDy) {
+      edge = dx >= 0 ? 'right' : 'left';
     } else {
-      // Middle peers: interpolate along the appropriate vertical edge
-      // Place on right edge (LTR bias) with Y distributed between top and bottom
-      const t = sorted.length > 1 ? i / (sorted.length - 1) : 0.5;
-      const edgeY = nodeLayout.y! + t * h;
-      const edgeX = peer.cx >= nodeCx ? nodeLayout.x! + w : nodeLayout.x!;
-      overrides.set(peer.flowId, { x: edgeX, y: edgeY });
+      edge = dy >= 0 ? 'bottom' : 'top';
+    }
+
+    const group = edgeGroups.get(edge) ?? [];
+    group.push(peer);
+    edgeGroups.set(edge, group);
+  }
+
+  // For each edge, spread ports evenly along the edge dimension
+  for (const [edge, group] of edgeGroups) {
+    if (edge === 'top' || edge === 'bottom') {
+      // Sort by X for left→right spread
+      group.sort((a, b) => a.cx - b.cx);
+      const edgeY = edge === 'top' ? nodeLayout.y! : nodeLayout.y! + h;
+      for (let i = 0; i < group.length; i++) {
+        const t = group.length > 1 ? (i + 1) / (group.length + 1) : 0.5;
+        overrides.set(group[i].flowId, { x: nodeLayout.x! + t * w, y: edgeY });
+      }
+    } else {
+      // Sort by Y for top→bottom spread
+      group.sort((a, b) => a.cy - b.cy);
+      const edgeX = edge === 'right' ? nodeLayout.x! + w : nodeLayout.x!;
+      for (let i = 0; i < group.length; i++) {
+        const t = group.length > 1 ? (i + 1) / (group.length + 1) : 0.5;
+        overrides.set(group[i].flowId, { x: edgeX, y: nodeLayout.y! + t * h });
+      }
     }
   }
 
