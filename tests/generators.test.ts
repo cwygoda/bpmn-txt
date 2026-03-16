@@ -1276,27 +1276,23 @@ describe('Message Flow Routing', () => {
     expect(edge).toBeDefined();
     const wp = edge!.waypoints;
 
-    // The intervening pool p2's element area should not be crossed.
-    // Use t2's bounds (the actual element in p2) rather than the Participant
-    // bounds, which may be expanded to contain message flow waypoints.
-    const t2 = layout.elements.get('t2')!;
-    const t2Left = t2.x!;
-    const t2Right = t2.x! + (t2.width ?? 100);
+    // The intervening pool p2 should not be crossed
     const p2 = layout.elements.get('Participant_p2')!;
     const p2Top = p2.y!;
     const p2Bottom = p2Top + p2.height!;
 
-    // No vertical segment should pass through p2's element area
+    // No segment should pass through p2's interior
     for (let i = 1; i < wp.length; i++) {
       const a = wp[i - 1];
       const b = wp[i];
 
       if (Math.abs(a.x - b.x) < 1) {
+        // Vertical segment — check X is outside p2 or Y range doesn't overlap
         const x = a.x;
         const minY = Math.min(a.y, b.y);
         const maxY = Math.max(a.y, b.y);
-        const crossesElements = x > t2Left && x < t2Right && maxY > p2Top && minY < p2Bottom;
-        expect(crossesElements, `vertical segment at x=${x} crosses p2 elements`).toBe(false);
+        const crossesP2 = x > p2.x! && x < p2.x! + p2.width! && maxY > p2Top && minY < p2Bottom;
+        expect(crossesP2, `vertical segment at x=${x} crosses p2`).toBe(false);
       }
     }
   });
