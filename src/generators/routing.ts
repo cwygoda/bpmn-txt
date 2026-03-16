@@ -513,7 +513,10 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
       const obstacles = collectObstacles(result, excludeIds, containerIds);
       obstacles.push(...poolLabelObstacles);
 
-      // For non-adjacent: add intervening pool bodies as obstacles
+      // For non-adjacent: add intervening pool bodies as obstacles.
+      // Shrink by OBSTACLE_MARGIN so that after inflation in findOrthogonalPath,
+      // the effective boundary matches the raw pool edge — keeping routes inside
+      // pool bounds rather than routing past inflated boundaries.
       if (!adjacent) {
         for (const layout of allPoolLayouts) {
           if (layout === poolALayout || layout === poolBLayout) continue;
@@ -521,10 +524,10 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           const bottom = top + layout.height!;
           if (bottom > gapTop && top < gapBottom) {
             obstacles.push({
-              x: layout.x!,
-              y: layout.y!,
-              width: layout.width!,
-              height: layout.height!,
+              x: layout.x! + OBSTACLE_MARGIN,
+              y: layout.y! + OBSTACLE_MARGIN,
+              width: layout.width! - 2 * OBSTACLE_MARGIN,
+              height: layout.height! - 2 * OBSTACLE_MARGIN,
             });
           }
         }
@@ -616,7 +619,7 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const stubDir = srcIsInUpperPool ? 1 : -1;
         const srcStub: Waypoint = { x: srcCenterX, y: srcY + stubDir * EXIT_STUB };
         const tgtStub: Waypoint = { x: tgtCenterX, y: tgtY - stubDir * EXIT_STUB };
-        const astarPath = findOrthogonalPath(srcStub, tgtStub, obstacles, routedSegments, gridHints, 'V');
+        const astarPath = findOrthogonalPath(srcStub, tgtStub, obstacles, routedSegments, gridHints);
         if (astarPath) {
           waypoints = simplifyWaypoints([src, ...astarPath, tgt]);
         }
@@ -630,7 +633,9 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
             ? tgtPLayout.y! - POOL_EDGE_MARGIN
             : tgtPLayout.y! + tgtPLayout.height! + POOL_EDGE_MARGIN;
 
-          const routeX = maxRight + USHAPE_BASE_OFFSET + i * USHAPE_FLOW_INCREMENT;
+          // Route inside pool bounds to prevent edges from escaping the diagram area.
+          // Reserve space from the right edge, spaced per flow index.
+          const routeX = maxRight - POOL_EDGE_MARGIN - (count - 1 - i) * USHAPE_FLOW_INCREMENT;
           const srcEdge = computeEdgePoint(srcLayout, routeX, tgtEdgeY);
           const isHorizontalExit = Math.abs(srcEdge.y - (srcLayout.y! + srcH / 2)) < DEDUP_TOLERANCE;
 
