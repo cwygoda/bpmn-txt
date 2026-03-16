@@ -357,6 +357,45 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     groups.get(key)!.push(flow);
   }
 
+  // Pre-compute port spread offsets GLOBALLY across all message flows.
+  // This ensures elements appearing in multiple pool-pair groups (e.g. an
+  // empty pool like crm-user targeted by flows from two different pools)
+  // get distinct port positions instead of all landing at center.
+  // key = "elementId:top" or "elementId:bottom", value = list of flow IDs
+  const portSlots = new Map<string, string[]>();
+  for (const flow of process.messageFlows) {
+    const srcPoolId = elementToPool.get(flow.from);
+    const tgtPoolId = elementToPool.get(flow.to);
+    if (!srcPoolId || !tgtPoolId || srcPoolId === tgtPoolId) continue;
+
+    const srcPoolLayout = result.elements.get(`Participant_${srcPoolId}`);
+    const tgtPoolLayout = result.elements.get(`Participant_${tgtPoolId}`);
+    if (!srcPoolLayout || !tgtPoolLayout) continue;
+
+    const srcAbove = srcPoolLayout.y! < tgtPoolLayout.y!;
+    const srcSide = srcAbove ? 'bottom' : 'top';
+    const tgtSide = srcAbove ? 'top' : 'bottom';
+
+    const srcKey = `${flow.from}:${srcSide}`;
+    const tgtKey = `${flow.to}:${tgtSide}`;
+    if (!portSlots.has(srcKey)) portSlots.set(srcKey, []);
+    portSlots.get(srcKey)!.push(flow.id!);
+    if (!portSlots.has(tgtKey)) portSlots.set(tgtKey, []);
+    portSlots.get(tgtKey)!.push(flow.id!);
+  }
+
+  // Compute X offset from center for a flow's port on an element.
+  // Spreads ports across the middle 50% of the element width.
+  function portOffsetX(elementId: string, side: string, flowId: string, elementWidth: number): number {
+    const key = `${elementId}:${side}`;
+    const slots = portSlots.get(key);
+    if (!slots || slots.length <= 1) return 0;
+    const idx = slots.indexOf(flowId);
+    const count = slots.length;
+    const spread = elementWidth * 0.5;
+    return -spread / 2 + idx * spread / (count - 1);
+  }
+
   // Route each group
   for (const [, flows] of groups) {
     const firstSrcPool = elementToPool.get(flows[0].from)!;
@@ -374,35 +413,6 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     const gapTop = aAbove ? aBottom : bBottom;
     const gapBottom = aAbove ? poolBLayout.y! : poolALayout.y!;
     const gapHeight = Math.max(gapBottom - gapTop, 0);
-
-    // Pre-compute port spread offsets per element per side (top/bottom)
-    // key = "elementId:top" or "elementId:bottom", value = list of flow IDs
-    const portSlots = new Map<string, string[]>();
-    for (const flow of flows) {
-      const srcPool = elementToPool.get(flow.from)!;
-      const srcIsInUpper = (srcPool === firstSrcPool) === aAbove;
-      const srcSide = srcIsInUpper ? 'bottom' : 'top';
-      const tgtSide = srcIsInUpper ? 'top' : 'bottom';
-
-      const srcKey = `${flow.from}:${srcSide}`;
-      const tgtKey = `${flow.to}:${tgtSide}`;
-      if (!portSlots.has(srcKey)) portSlots.set(srcKey, []);
-      portSlots.get(srcKey)!.push(flow.id!);
-      if (!portSlots.has(tgtKey)) portSlots.set(tgtKey, []);
-      portSlots.get(tgtKey)!.push(flow.id!);
-    }
-
-    // Compute X offset from center for a flow's port on an element.
-    // Spreads ports across the middle 50% of the element width.
-    function portOffsetX(elementId: string, side: string, flowId: string, elementWidth: number): number {
-      const key = `${elementId}:${side}`;
-      const slots = portSlots.get(key);
-      if (!slots || slots.length <= 1) return 0;
-      const idx = slots.indexOf(flowId);
-      const count = slots.length;
-      const spread = elementWidth * 0.5;
-      return -spread / 2 + idx * spread / (count - 1);
-    }
 
     // Sort by average X for crossing minimization
     const flowsWithMeta = flows.map(flow => {
