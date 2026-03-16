@@ -363,6 +363,38 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
   // get distinct port positions instead of all landing at center.
   // key = "elementId:top" or "elementId:bottom", value = list of flow IDs
   const portSlots = new Map<string, string[]>();
+
+  // Reserve slots for sequence flow endpoints already on top/bottom edges.
+  // This prevents message flow ports from overlapping with sequence flow ports.
+  for (const [edgeId, edge] of result.edges) {
+    if (!edgeId.startsWith('flow_')) continue; // only sequence flows
+    const wp = edge.waypoints;
+    if (wp.length < 2) continue;
+
+    // Check first waypoint (source port)
+    for (const [elemId, layout] of result.elements) {
+      if (elemId.startsWith('Participant_') || elemId.startsWith('Lane_')) continue;
+      if (layout.x === undefined || layout.y === undefined) continue;
+      const w = layout.width ?? 100;
+      const h = layout.height ?? 80;
+
+      for (const pt of [wp[0], wp[wp.length - 1]]) {
+        // On top edge?
+        if (Math.abs(pt.y - layout.y) < 1 && pt.x >= layout.x && pt.x <= layout.x + w) {
+          const key = `${elemId}:top`;
+          if (!portSlots.has(key)) portSlots.set(key, []);
+          portSlots.get(key)!.push(`__seq_${edgeId}`);
+        }
+        // On bottom edge?
+        if (Math.abs(pt.y - (layout.y + h)) < 1 && pt.x >= layout.x && pt.x <= layout.x + w) {
+          const key = `${elemId}:bottom`;
+          if (!portSlots.has(key)) portSlots.set(key, []);
+          portSlots.get(key)!.push(`__seq_${edgeId}`);
+        }
+      }
+    }
+  }
+
   for (const flow of process.messageFlows) {
     const srcPoolId = elementToPool.get(flow.from);
     const tgtPoolId = elementToPool.get(flow.to);
@@ -675,6 +707,32 @@ function computeFanOut(
     edgeGroups.set(edge, group);
   }
 
+  // When all peers land on a single horizontal edge and Y-spread is significant,
+  // redistribute extreme peers to top/bottom for BPMN-style gateway fan-out.
+  if (edgeGroups.size === 1) {
+    const [onlyEdge, group] = [...edgeGroups.entries()][0];
+    if (onlyEdge === 'left' || onlyEdge === 'right') {
+      const sorted = [...group].sort((a, b) => a.cy - b.cy);
+      const topPeer = sorted[0];
+      const botPeer = sorted[sorted.length - 1];
+
+      if (topPeer.cy < nodeCy && sorted.length > 1) {
+        group.splice(group.indexOf(topPeer), 1);
+        const topGroup = edgeGroups.get('top') ?? [];
+        topGroup.push(topPeer);
+        edgeGroups.set('top', topGroup);
+      }
+      if (botPeer.cy > nodeCy && group.length > 0) {
+        group.splice(group.indexOf(botPeer), 1);
+        const botGroup = edgeGroups.get('bottom') ?? [];
+        botGroup.push(botPeer);
+        edgeGroups.set('bottom', botGroup);
+      }
+      // Clean up empty group
+      if (group.length === 0) edgeGroups.delete(onlyEdge);
+    }
+  }
+
   // For each edge, spread ports evenly along the edge dimension
   for (const [edge, group] of edgeGroups) {
     if (edge === 'top' || edge === 'bottom') {
@@ -789,6 +847,14 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
         return (aLayout?.x ?? 0) - (bLayout?.x ?? 0);
       });
 
+    // Remove stale ELK-generated edges for this pool's flows before collecting
+    // existing segments — these are about to be re-routed and would otherwise
+    // block the A* router with phantom obstacles.
+    const poolFlowIds = new Set(sortedFlows.map(f => f.id!));
+    for (const fid of poolFlowIds) {
+      result.edges.delete(fid);
+    }
+
     // Track routed segments incrementally for overlap prevention
     const routedSegments = collectExistingSegments(result);
 
@@ -877,10 +943,19 @@ export function routePoolSequenceFlows(pools: Pool[], result: LayoutResult): voi
         const srcStub = computeStub(srcLayout, src, stubLen);
         const tgtStub = computeStub(tgtLayout, tgt, stubLen);
 
+        // Add src/tgt elements as obstacles for A* — the stub points clear
+        // the inflated boundaries, but without this A* can route back through
+        // the source/target nodes (causing inward bends at gateway exits).
+        const astarObstacles = [
+          ...obstacles,
+          { x: srcLayout.x!, y: srcLayout.y!, width: srcW, height: srcH },
+          { x: tgtLayout.x!, y: tgtLayout.y!, width: tgtW, height: tgtH },
+        ];
+
         const astarPath = findOrthogonalPath(
           { x: srcStub.x, y: srcStub.y },
           { x: tgtStub.x, y: tgtStub.y },
-          obstacles,
+          astarObstacles,
           routedSegments,
           gridHints
         );

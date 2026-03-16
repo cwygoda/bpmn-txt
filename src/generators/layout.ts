@@ -328,6 +328,7 @@ function buildElkChildren(
           'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
           'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
           'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
+          'elk.spacing.edgeNode': '20',
           'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
           'elk.edgeRouting': 'ORTHOGONAL',
           'elk.padding': '[top=40,left=15,bottom=15,right=15]',
@@ -384,6 +385,7 @@ function buildElkGraph(
     'elk.spacing.nodeNode': String(options.nodeSpacing ?? 70),
     'elk.layered.spacing.nodeNodeBetweenLayers': String(options.layerSpacing ?? 100),
     'elk.spacing.edgeEdge': String(options.edgeSpacing ?? 20),
+    'elk.spacing.edgeNode': '20',
     'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
     'elk.edgeRouting': 'ORTHOGONAL',
   };
