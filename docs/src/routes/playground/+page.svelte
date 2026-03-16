@@ -266,8 +266,8 @@
 
 <style>
   :global(.content:has(.playground)) {
-    max-width: 100%;
-    padding: 0.5rem;
+    max-width: 100% !important;
+    padding: 0.5rem !important;
   }
 
   :global(.layout:has(.playground) ~ .site-footer) {
