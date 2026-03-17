@@ -20,6 +20,43 @@ import {
 } from './constants.js';
 import { findOrthogonalPath, waypointsToSegments, type Rect, type Segment } from './obstacle-router.js';
 
+/** Inset from pool corner for edge strips (leave room for entry/exit stubs) */
+const POOL_STRIP_INSET = OBSTACLE_MARGIN + EXIT_STUB;
+
+/**
+ * Create thin obstacle strips along pool edges so routes avoid hugging borders.
+ * `sides` controls which edges get strips; defaults to all four.
+ */
+function createPoolEdgeStrips(
+  layout: Layout,
+  sides: Array<'left' | 'right' | 'top' | 'bottom'> = ['left', 'right', 'top', 'bottom'],
+): Rect[] {
+  const strips: Rect[] = [];
+  const stripTop = layout.y! + POOL_STRIP_INSET;
+  const stripH = Math.max(0, layout.height! - 2 * POOL_STRIP_INSET);
+  const stripLeft = layout.x! + POOL_STRIP_INSET;
+  const stripW = Math.max(0, layout.width! - 2 * POOL_STRIP_INSET);
+
+  if (stripH > 0) {
+    const edgeW = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
+    if (sides.includes('right')) {
+      strips.push({ x: layout.x! + layout.width! - edgeW, y: stripTop, width: edgeW * 2, height: stripH });
+    }
+    if (sides.includes('left')) {
+      strips.push({ x: layout.x! - edgeW, y: stripTop, width: edgeW * 2, height: stripH });
+    }
+  }
+  if (stripW > 0) {
+    const edgeH = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
+    if (sides.includes('top')) {
+      strips.push({ x: stripLeft, y: layout.y! - edgeH, width: stripW, height: edgeH * 2 });
+    }
+    if (sides.includes('bottom')) {
+      strips.push({ x: stripLeft, y: layout.y! + layout.height! - edgeH, width: stripW, height: edgeH * 2 });
+    }
+  }
+  return strips;
+}
 
 /**
  * Count how many Z-shape segments intersect obstacles for a given midpoint.
@@ -461,6 +498,17 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     const gapBottom = aAbove ? poolBLayout.y! : poolALayout.y!;
     const gapHeight = Math.max(gapBottom - gapTop, 0);
 
+    // Pre-compute pool-edge strips (reused across all flows in this group)
+    const nonAdjacentEdgeStrips: Rect[] = !adjacent
+      ? allPoolLayouts.flatMap(layout => createPoolEdgeStrips(layout))
+      : [];
+    const adjacentEdgeStripsA: Rect[] = adjacent
+      ? createPoolEdgeStrips(poolALayout, ['left', 'right'])
+      : [];
+    const adjacentEdgeStripsB: Rect[] = adjacent
+      ? createPoolEdgeStrips(poolBLayout, ['left', 'right'])
+      : [];
+
     // Sort by average X for crossing minimization
     const flowsWithMeta = flows.map(flow => {
       const srcLayout = result.elements.get(flow.from)
@@ -533,54 +581,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           }
         }
 
-        // Add thin vertical-side obstacles for ALL pools (including src/tgt)
-        // so A* avoids routing along pool left/right borders.
-        // These strips only cover the interior vertical sides, leaving
-        // top/bottom clear for entry/exit.
-        for (const layout of allPoolLayouts) {
-          const inset = OBSTACLE_MARGIN + EXIT_STUB;
-          const stripTop = layout.y! + inset;
-          const stripH = Math.max(0, layout.height! - 2 * inset);
-          if (stripH <= 0) continue;
-          // Right-side strip spanning pool edge — after A* inflation by
-          // OBSTACLE_MARGIN the forbidden zone extends POOL_EDGE_MARGIN inside
-          // and outside the pool border.
-          const edgeW = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
-          obstacles.push({
-            x: layout.x! + layout.width! - edgeW,
-            y: stripTop,
-            width: edgeW * 2,
-            height: stripH,
-          });
-          // Left-side strip spanning pool edge
-          obstacles.push({
-            x: layout.x! - edgeW,
-            y: stripTop,
-            width: edgeW * 2,
-            height: stripH,
-          });
-
-          // Top-edge strip — inset from left/right so vertical crossings work
-          const hInset = OBSTACLE_MARGIN + EXIT_STUB;
-          const stripLeft = layout.x! + hInset;
-          const stripW = Math.max(0, layout.width! - 2 * hInset);
-          if (stripW > 0) {
-            const edgeH = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
-            obstacles.push({
-              x: stripLeft,
-              y: layout.y! - edgeH,
-              width: stripW,
-              height: edgeH * 2,
-            });
-            // Bottom-edge strip
-            obstacles.push({
-              x: stripLeft,
-              y: layout.y! + layout.height! - edgeH,
-              width: stripW,
-              height: edgeH * 2,
-            });
-          }
-        }
+        // Pool-edge strips keep A* away from pool borders
+        obstacles.push(...nonAdjacentEdgeStrips);
       }
 
       let waypoints: Waypoint[] | null = null;
@@ -612,24 +614,11 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
           ? collectPoolObstacles(tgtPoolObj, result, new Set([flow.to]), containerIds)
           : [];
 
-        // Add pool-edge strips so escape/entry paths avoid pool borders
-        for (const [poolLayout, poolObs] of [
-          [poolALayout, aAbove === srcIsInUpperPool ? srcPoolObstacles : tgtPoolObstacles],
-          [poolBLayout, aAbove === srcIsInUpperPool ? tgtPoolObstacles : srcPoolObstacles],
-        ] as [Layout, Rect[]][]) {
-          const inset = OBSTACLE_MARGIN + EXIT_STUB;
-          const stripTop = poolLayout.y! + inset;
-          const stripH = Math.max(0, poolLayout.height! - 2 * inset);
-          if (stripH <= 0) continue;
-          poolObs.push({
-            x: poolLayout.x! + poolLayout.width!,
-            y: stripTop, width: 1, height: stripH,
-          });
-          poolObs.push({
-            x: poolLayout.x! - 1,
-            y: stripTop, width: 1, height: stripH,
-          });
-        }
+        // Pool-edge strips keep escape/entry paths away from pool borders
+        const poolAObs = aAbove === srcIsInUpperPool ? srcPoolObstacles : tgtPoolObstacles;
+        const poolBObs = aAbove === srcIsInUpperPool ? tgtPoolObstacles : srcPoolObstacles;
+        poolAObs.push(...adjacentEdgeStripsA);
+        poolBObs.push(...adjacentEdgeStripsB);
 
         // Vertical escape: source element → source pool edge
         const srcBoundary: Waypoint = { x: srcCenterX, y: srcPoolEdgeY };
