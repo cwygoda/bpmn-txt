@@ -77,7 +77,7 @@ export const ZSHAPE_EXTRA_MARGIN = 5;
 export const PORT_SPREAD_RATIO = 0.5;
 
 /** Margin from pool edge for U-shape fallback routing */
-export const POOL_EDGE_MARGIN = 15;
+export const POOL_EDGE_MARGIN = 30;
 
 /** Base horizontal offset for U-shape routing (beyond rightmost pool edge) */
 export const USHAPE_BASE_OFFSET = 40;

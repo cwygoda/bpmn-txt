@@ -347,7 +347,8 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
     }
   }
 
-  // Grid hints — pool boundary coordinates for intermediate routing options
+  // Grid hints — pool boundary coordinates for intermediate routing options.
+  // Use margin-inset edges so routes avoid hugging pool borders.
   const gridHints: Waypoint[] = [];
   for (const layout of allPoolLayouts) {
     gridHints.push({ x: layout.x!, y: layout.y! });
@@ -531,6 +532,55 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
             });
           }
         }
+
+        // Add thin vertical-side obstacles for ALL pools (including src/tgt)
+        // so A* avoids routing along pool left/right borders.
+        // These strips only cover the interior vertical sides, leaving
+        // top/bottom clear for entry/exit.
+        for (const layout of allPoolLayouts) {
+          const inset = OBSTACLE_MARGIN + EXIT_STUB;
+          const stripTop = layout.y! + inset;
+          const stripH = Math.max(0, layout.height! - 2 * inset);
+          if (stripH <= 0) continue;
+          // Right-side strip spanning pool edge — after A* inflation by
+          // OBSTACLE_MARGIN the forbidden zone extends POOL_EDGE_MARGIN inside
+          // and outside the pool border.
+          const edgeW = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
+          obstacles.push({
+            x: layout.x! + layout.width! - edgeW,
+            y: stripTop,
+            width: edgeW * 2,
+            height: stripH,
+          });
+          // Left-side strip spanning pool edge
+          obstacles.push({
+            x: layout.x! - edgeW,
+            y: stripTop,
+            width: edgeW * 2,
+            height: stripH,
+          });
+
+          // Top-edge strip — inset from left/right so vertical crossings work
+          const hInset = OBSTACLE_MARGIN + EXIT_STUB;
+          const stripLeft = layout.x! + hInset;
+          const stripW = Math.max(0, layout.width! - 2 * hInset);
+          if (stripW > 0) {
+            const edgeH = Math.max(1, POOL_EDGE_MARGIN - OBSTACLE_MARGIN);
+            obstacles.push({
+              x: stripLeft,
+              y: layout.y! - edgeH,
+              width: stripW,
+              height: edgeH * 2,
+            });
+            // Bottom-edge strip
+            obstacles.push({
+              x: stripLeft,
+              y: layout.y! + layout.height! - edgeH,
+              width: stripW,
+              height: edgeH * 2,
+            });
+          }
+        }
       }
 
       let waypoints: Waypoint[] | null = null;
@@ -561,6 +611,25 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
         const tgtPoolObstacles = tgtPoolObj
           ? collectPoolObstacles(tgtPoolObj, result, new Set([flow.to]), containerIds)
           : [];
+
+        // Add pool-edge strips so escape/entry paths avoid pool borders
+        for (const [poolLayout, poolObs] of [
+          [poolALayout, aAbove === srcIsInUpperPool ? srcPoolObstacles : tgtPoolObstacles],
+          [poolBLayout, aAbove === srcIsInUpperPool ? tgtPoolObstacles : srcPoolObstacles],
+        ] as [Layout, Rect[]][]) {
+          const inset = OBSTACLE_MARGIN + EXIT_STUB;
+          const stripTop = poolLayout.y! + inset;
+          const stripH = Math.max(0, poolLayout.height! - 2 * inset);
+          if (stripH <= 0) continue;
+          poolObs.push({
+            x: poolLayout.x! + poolLayout.width!,
+            y: stripTop, width: 1, height: stripH,
+          });
+          poolObs.push({
+            x: poolLayout.x! - 1,
+            y: stripTop, width: 1, height: stripH,
+          });
+        }
 
         // Vertical escape: source element → source pool edge
         const srcBoundary: Waypoint = { x: srcCenterX, y: srcPoolEdgeY };
@@ -633,33 +702,27 @@ export function routeMessageFlows(process: Process, result: LayoutResult): void 
             ? tgtPLayout.y! - POOL_EDGE_MARGIN
             : tgtPLayout.y! + tgtPLayout.height! + POOL_EDGE_MARGIN;
 
-          // Route inside pool bounds to prevent edges from escaping the diagram area.
-          // Reserve space from the right edge, spaced per flow index.
-          const routeX = maxRight - POOL_EDGE_MARGIN - (count - 1 - i) * USHAPE_FLOW_INCREMENT;
+          // Route outside pool bounds with clearance from the right edge.
+          const routeX = maxRight + POOL_EDGE_MARGIN + i * USHAPE_FLOW_INCREMENT;
           const srcEdge = computeEdgePoint(srcLayout, routeX, tgtEdgeY);
           const isHorizontalExit = Math.abs(srcEdge.y - (srcLayout.y! + srcH / 2)) < DEDUP_TOLERANCE;
 
-          if (isHorizontalExit) {
-            waypoints = dedup([
-              srcEdge,
-              { x: routeX, y: srcEdge.y },
-              { x: routeX, y: tgtEdgeY },
-              { x: tgtCenterX, y: tgtEdgeY },
-              { x: tgtCenterX, y: tgtY },
-            ]);
-          } else {
-            const srcEdgeY = srcIsInUpperPool
-              ? srcPLayout.y! + srcPLayout.height! + POOL_EDGE_MARGIN
-              : srcPLayout.y! - POOL_EDGE_MARGIN;
-            waypoints = dedup([
-              srcEdge,
-              { x: srcEdge.x, y: srcEdgeY },
-              { x: routeX, y: srcEdgeY },
-              { x: routeX, y: tgtEdgeY },
-              { x: tgtCenterX, y: tgtEdgeY },
-              { x: tgtCenterX, y: tgtY },
-            ]);
-          }
+          // Exit from the top/bottom edge toward the target direction,
+          // then go to routeX (outside pools) to avoid sibling elements.
+          // Use a short stub to clear the element, then horizontal to routeX.
+          const exitDir = srcIsInUpperPool ? 1 : -1;
+          const srcExitY = srcIsInUpperPool
+            ? srcLayout.y! + srcH  // bottom edge
+            : srcLayout.y!;        // top edge
+          const stubY = srcExitY + exitDir * EXIT_STUB;
+          waypoints = dedup([
+            { x: srcCenterX, y: srcExitY },
+            { x: srcCenterX, y: stubY },
+            { x: routeX, y: stubY },
+            { x: routeX, y: tgtEdgeY },
+            { x: tgtCenterX, y: tgtEdgeY },
+            { x: tgtCenterX, y: tgtY },
+          ]);
         }
       }
 
