@@ -1,3 +1,54 @@
+# [0.15.0](https://github.com/cwygoda/bpmn-txt/compare/v0.14.0...v0.15.0) (2026-03-17)
+
+
+### Bug Fixes
+
+* **ci:** add vscode-bpmn-txt to workspace for release builds ([0834e58](https://github.com/cwygoda/bpmn-txt/commit/0834e58f9d00cbaa25f8b38956ef9da941e63c23))
+* **layout:** cascade normalized pool width to lanes ([9133229](https://github.com/cwygoda/bpmn-txt/commit/9133229c13c3ca7617220676f6ff390061e241bf))
+* **layout:** clamp collapsed pool Y to prevent negative coordinates ([950c8cb](https://github.com/cwygoda/bpmn-txt/commit/950c8cb6071cb8d2c987c14eb0cdd927e1c1dfaf))
+* **layout:** collect boundary events for ELK layout ([6d74f82](https://github.com/cwygoda/bpmn-txt/commit/6d74f82a5d383a509b89476b498066ebe95cffb0))
+* **layout:** expand pools to contain message flow waypoints with margin ([963b124](https://github.com/cwygoda/bpmn-txt/commit/963b124000e47c153a4b77f688f8755dd292d40d))
+* **layout:** use nullish coalescing for ELK spacing options ([2b9a81c](https://github.com/cwygoda/bpmn-txt/commit/2b9a81c6fdf01c407f139920186088f4ed0782e2))
+* **playground:** correct zoom fit-viewport padding and overflow ([43188d7](https://github.com/cwygoda/bpmn-txt/commit/43188d7a6252e8cb9c08572842ae077d9218bc94))
+* **playground:** force full-width override to beat Svelte scoped specificity ([363ccf2](https://github.com/cwygoda/bpmn-txt/commit/363ccf2c37958151ee9725855c0d9ee94b1b1b13))
+* **routing:** add null guard for waypoints in message flow routing ([6f69abb](https://github.com/cwygoda/bpmn-txt/commit/6f69abbe70e2387aa7ac475e96138ecc90a74bcc))
+* **routing:** cap EXIT_STUB to pool gap/3 for adjacent pools ([7a9c06a](https://github.com/cwygoda/bpmn-txt/commit/7a9c06ae324a5eedeb6f3d072435347ed7be9328))
+* **routing:** center port spread symmetrically across element width ([b67abcb](https://github.com/cwygoda/bpmn-txt/commit/b67abcb3fd463069fac95fc78ebf87ea06a2251f))
+* **routing:** enforce pool edge margin for non-adjacent message flows ([2c7e226](https://github.com/cwygoda/bpmn-txt/commit/2c7e226bf2726bb01bb1a028c5c3cce6d90b76d8))
+* **routing:** fan-out distributes middle peers along vertical edge ([a3b18f2](https://github.com/cwygoda/bpmn-txt/commit/a3b18f2ac71d6ce42fe59a84bd9158d9a4889a51))
+* **routing:** keep non-adjacent message flows within pool bounds ([90d9fb1](https://github.com/cwygoda/bpmn-txt/commit/90d9fb15a6a920c694a8be7e8b67e9853bd8d4ee))
+* **routing:** pass stub direction to A* and add angular threshold for fan-out ([e05837f](https://github.com/cwygoda/bpmn-txt/commit/e05837fa5f62f1a1017d47d9f6df974e4188ba29))
+* **routing:** prevent inward bends, stale ELK edges, and port collisions ([288ab88](https://github.com/cwygoda/bpmn-txt/commit/288ab88b276eab44a78698225139d4556c9f7a4a))
+* **routing:** reduce PARALLEL_TOLERANCE from 5px to 2px ([8800e7a](https://github.com/cwygoda/bpmn-txt/commit/8800e7a4874436e46dba309bcc5df6e8160eb739))
+* **routing:** spread message flow ports globally across pool-pair groups ([bdc1643](https://github.com/cwygoda/bpmn-txt/commit/bdc16436f708713bbf82c6cf3cd9d981af87d754))
+* **routing:** spread message flow ports when multiple flows share an element ([25f9efd](https://github.com/cwygoda/bpmn-txt/commit/25f9efdff5a8950059d30d1d1d967000be143f56))
+* **routing:** use direction-based edge selection in computeFanOut ([f7354f4](https://github.com/cwygoda/bpmn-txt/commit/f7354f40b188f654ff83913b12795f4b3ddf2af1))
+* **routing:** Z-shape fallback now avoids obstacles ([f0df2d3](https://github.com/cwygoda/bpmn-txt/commit/f0df2d3a62b8315c444afe9933679cbd1e47aee4))
+
+
+### Features
+
+* **diagram:** add BPMNLabel positioning for flows with name/condition ([4322d90](https://github.com/cwygoda/bpmn-txt/commit/4322d90fced4bdbb767abd33824badea825a2cc7))
+* **docs:** add three-state theme switcher (light/dark/system) ([87ec50b](https://github.com/cwygoda/bpmn-txt/commit/87ec50b0707353c9b8134a654c662b9014766ec2))
+* **docs:** auto-size BPMN diagram viewer with scale and padding props ([74065df](https://github.com/cwygoda/bpmn-txt/commit/74065dfa20b1dbd1e977371ce42fa4b9f0e4ff92))
+* **docs:** examples page with live BPMN diagram rendering ([52722ab](https://github.com/cwygoda/bpmn-txt/commit/52722ab7df01b4f58cac2b354f131eef29fcdbd6))
+* **docs:** live-reload source changes in dev server ([6f09e3d](https://github.com/cwygoda/bpmn-txt/commit/6f09e3da3fef18db5aab97e2b743c2be2338034b))
+* **layout:** support expanded subprocess internal layout via ELK nesting ([3704efa](https://github.com/cwygoda/bpmn-txt/commit/3704efabfba056c01267c0ec808455ebc3cff709))
+* **routing:** gateway fan-out and pool-edge message flow routing ([67a4b64](https://github.com/cwygoda/bpmn-txt/commit/67a4b641ea3737f9fadcac84531deff370469239))
+* **routing:** pool label width proportional to name length ([bdbf82b](https://github.com/cwygoda/bpmn-txt/commit/bdbf82bd3a205bcaedf2f796339d79564ca76535))
+
+
+### Performance Improvements
+
+* **layout:** cache collectFromPool results to avoid redundant calls ([34380d3](https://github.com/cwygoda/bpmn-txt/commit/34380d3e22b554646997941974249073639692b3))
+* **routing:** binary search in coordToIdx instead of indexOf ([5245d89](https://github.com/cwygoda/bpmn-txt/commit/5245d89eb04a59e46d392ef067d07f41f19a5e49))
+* **routing:** replace sorted-array priority queue with binary heap ([4141930](https://github.com/cwygoda/bpmn-txt/commit/4141930549e01a2bebe9b381862b511b3922e4be))
+
+
+### Reverts
+
+* Revert "fix(layout): expand pools to contain message flow waypoints with margin" ([2b60df9](https://github.com/cwygoda/bpmn-txt/commit/2b60df9164633e49f9eae17246d7d105b540cb9b))
+
 # [0.14.0](https://github.com/cwygoda/bpmn-txt/compare/v0.13.3...v0.14.0) (2026-03-03)
 
 
