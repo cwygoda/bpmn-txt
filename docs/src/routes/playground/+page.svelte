@@ -191,7 +191,17 @@
 
       // Render in bpmn-js
       await bpmnViewer.importXML(xml);
-      bpmnViewer.get('canvas').zoom('fit-viewport');
+      const canvas = bpmnViewer.get('canvas');
+      canvas.zoom('fit-viewport');
+      // Apply padding by adjusting the viewbox after fit
+      const vb = canvas.viewbox();
+      const pad = 20;
+      canvas.viewbox({
+        x: vb.x - pad,
+        y: vb.y - pad,
+        width: vb.width + pad * 2,
+        height: vb.height + pad * 2,
+      });
 
     } catch (e: any) {
       errors = [{ message: e.message || 'Unknown error', type: 'error' }];
@@ -417,9 +427,14 @@
     height: 100%;
   }
 
+  .viewer :global(.bjs-container) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .viewer {
     flex: 1;
-    padding: 1rem;
+    overflow: hidden;
     background: white;
   }
 
